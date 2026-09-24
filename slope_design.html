@@ -57,7 +57,7 @@ input[type=range]::-webkit-slider-thumb {
 /* ── PLOTS ── */
 .plots-area {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 0;
   flex: 1;
   min-height: 0;
@@ -65,16 +65,17 @@ input[type=range]::-webkit-slider-thumb {
 .plot-panel {
   display: flex;
   flex-direction: column;
-  padding: 12px 16px 8px;
+  padding: 12px 14px 8px;
   border-right: 1px solid #2a2d3e;
   min-height: 0;
 }
 .plot-panel:last-child { border-right: none; }
 .plot-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
-.plot-title { font-size: 0.9rem; font-weight: 700; }
+.plot-title { font-size: 0.85rem; font-weight: 700; }
 .title-A { color: #3b82f6; }
 .title-B { color: #f97316; }
-.plot-desc { font-size: 0.7rem; color: #5a6070; }
+.title-C { color: #10b981; }
+.plot-desc { font-size: 0.67rem; color: #5a6070; }
 canvas { width: 100%; flex: 1; display: block; border-radius: 6px; }
 
 /* ── COMPARISON BAR ── */
@@ -98,6 +99,7 @@ canvas { width: 100%; flex: 1; display: block; border-radius: 6px; }
 .metric-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .dot-A { background: #3b82f6; }
 .dot-B { background: #f97316; }
+.dot-C { background: #10b981; }
 .metric-val { font-weight: 700; font-variant-numeric: tabular-nums; color: #c8d0e0; min-width: 50px; }
 .metric-bar-track { flex: 1; height: 5px; background: #2a2d3e; border-radius: 3px; overflow: hidden; }
 .metric-bar-fill { height: 100%; border-radius: 3px; }
@@ -117,10 +119,11 @@ canvas { width: 100%; flex: 1; display: block; border-radius: 6px; }
 .leg-dot  { width: 7px; height: 7px; border-radius: 50%; }
 .leg-band { width: 16px; height: 8px; border-radius: 2px; opacity: 0.4; }
 
-@media (max-width: 700px) {
+@media (max-width: 900px) {
   .plots-area { grid-template-columns: 1fr; }
   .comparison { grid-template-columns: repeat(2, 1fr); }
-  .plot-panel:first-child { border-bottom: 1px solid #2a2d3e; border-right: none; }
+  .plot-panel { border-right: none; border-bottom: 1px solid #2a2d3e; }
+  .plot-panel:last-child { border-bottom: none; }
 }
 </style>
 </head>
@@ -182,32 +185,49 @@ canvas { width: 100%; flex: 1; display: block; border-radius: 6px; }
       <div class="leg"><div class="leg-dot" style="background:#f97316;border:1.5px solid #fb923c"></div><span>Simulated data</span></div>
     </div>
   </div>
+  <div class="plot-panel">
+    <div class="plot-header">
+      <span class="plot-title title-C">Design C — Five levels (equally spaced)</span>
+      <span class="plot-desc" id="desc-C">…</span>
+    </div>
+    <canvas id="canvasC"></canvas>
+    <div class="legend">
+      <div class="leg"><div class="leg-dash" style="border-color:#aaa"></div><span>True line</span></div>
+      <div class="leg"><div class="leg-line" style="background:#10b981"></div><span>Fitted line</span></div>
+      <div class="leg"><div class="leg-band" style="background:#10b981"></div><span>95% CI band</span></div>
+      <div class="leg"><div class="leg-dot" style="background:#10b981;border:1.5px solid #34d399"></div><span>Simulated data</span></div>
+    </div>
+  </div>
 </div>
 
 <div class="comparison">
   <div class="metric">
     <div class="metric-title">Sxx = Σ(xᵢ − x̄)² — leverage</div>
-    <div class="metric-row"><div class="metric-dot dot-A"></div><span>Design A</span><span class="metric-val" id="sxx-A">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-sxx-A" style="background:#3b82f6"></div></div></div>
-    <div class="metric-row"><div class="metric-dot dot-B"></div><span>Design B</span><span class="metric-val" id="sxx-B">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-sxx-B" style="background:#f97316"></div></div></div>
-    <div class="ratio-tag">Ratio A/B = <strong id="ratio-sxx">—</strong> &nbsp;(A always ≥ B)</div>
+    <div class="metric-row"><div class="metric-dot dot-A"></div><span>A (2-level)</span><span class="metric-val" id="sxx-A">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-sxx-A" style="background:#3b82f6"></div></div></div>
+    <div class="metric-row"><div class="metric-dot dot-B"></div><span>B (3-level)</span><span class="metric-val" id="sxx-B">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-sxx-B" style="background:#f97316"></div></div></div>
+    <div class="metric-row"><div class="metric-dot dot-C"></div><span>C (5-level)</span><span class="metric-val" id="sxx-C">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-sxx-C" style="background:#10b981"></div></div></div>
+    <div class="ratio-tag">Theoretical: A = 3/2 × B = 2 × C</div>
   </div>
   <div class="metric">
     <div class="metric-title">SE(â) = σ / √Sxx — slope uncertainty</div>
-    <div class="metric-row"><div class="metric-dot dot-A"></div><span>Design A</span><span class="metric-val" id="se-A">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-se-A" style="background:#3b82f6"></div></div></div>
-    <div class="metric-row"><div class="metric-dot dot-B"></div><span>Design B</span><span class="metric-val" id="se-B">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-se-B" style="background:#f97316"></div></div></div>
-    <div class="ratio-tag">Design A is <strong id="ratio-se">—</strong> more precise</div>
+    <div class="metric-row"><div class="metric-dot dot-A"></div><span>A (2-level)</span><span class="metric-val" id="se-A">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-se-A" style="background:#3b82f6"></div></div></div>
+    <div class="metric-row"><div class="metric-dot dot-B"></div><span>B (3-level)</span><span class="metric-val" id="se-B">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-se-B" style="background:#f97316"></div></div></div>
+    <div class="metric-row"><div class="metric-dot dot-C"></div><span>C (5-level)</span><span class="metric-val" id="se-C">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-se-C" style="background:#10b981"></div></div></div>
+    <div class="ratio-tag">A vs C: <strong id="ratio-se">—</strong> gain · A vs B: <strong id="ratio-se-ab">—</strong></div>
   </div>
   <div class="metric">
     <div class="metric-title">95% CI width on slope â</div>
-    <div class="metric-row"><div class="metric-dot dot-A"></div><span>Design A</span><span class="metric-val" id="ci-A">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-ci-A" style="background:#3b82f6"></div></div></div>
-    <div class="metric-row"><div class="metric-dot dot-B"></div><span>Design B</span><span class="metric-val" id="ci-B">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-ci-B" style="background:#f97316"></div></div></div>
-    <div class="ratio-tag">A saves <strong id="ratio-ci">—</strong> of CI width</div>
+    <div class="metric-row"><div class="metric-dot dot-A"></div><span>A (2-level)</span><span class="metric-val" id="ci-A">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-ci-A" style="background:#3b82f6"></div></div></div>
+    <div class="metric-row"><div class="metric-dot dot-B"></div><span>B (3-level)</span><span class="metric-val" id="ci-B">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-ci-B" style="background:#f97316"></div></div></div>
+    <div class="metric-row"><div class="metric-dot dot-C"></div><span>C (5-level)</span><span class="metric-val" id="ci-C">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-ci-C" style="background:#10b981"></div></div></div>
+    <div class="ratio-tag">A narrower than C by <strong id="ratio-ci">—</strong></div>
   </div>
   <div class="metric">
     <div class="metric-title">Power — detect slope a ≠ 0</div>
-    <div class="metric-row"><div class="metric-dot dot-A"></div><span>Design A</span><span class="metric-val" id="pw-A">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-pw-A" style="background:#3b82f6"></div></div></div>
-    <div class="metric-row"><div class="metric-dot dot-B"></div><span>Design B</span><span class="metric-val" id="pw-B">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-pw-B" style="background:#f97316"></div></div></div>
-    <div class="ratio-tag" id="pw-note">Power at true slope a</div>
+    <div class="metric-row"><div class="metric-dot dot-A"></div><span>A (2-level)</span><span class="metric-val" id="pw-A">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-pw-A" style="background:#3b82f6"></div></div></div>
+    <div class="metric-row"><div class="metric-dot dot-B"></div><span>B (3-level)</span><span class="metric-val" id="pw-B">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-pw-B" style="background:#f97316"></div></div></div>
+    <div class="metric-row"><div class="metric-dot dot-C"></div><span>C (5-level)</span><span class="metric-val" id="pw-C">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-pw-C" style="background:#10b981"></div></div></div>
+    <div class="ratio-tag" id="pw-note">NCP = |a|·√Sxx / σ</div>
   </div>
 </div>
 
@@ -321,9 +341,24 @@ function makeDesign(type, n, xmin, xmax) {
   if (type === 'A') {
     const nL=Math.floor(n/2), nR=n-nL;
     return [...Array(nL).fill(xmin), ...Array(nR).fill(xmax)];
-  } else { // B: 3 levels
+  } else if (type === 'B') {
     const n1=Math.floor(n/3), n2=Math.floor(n/3), n3=n-n1-n2;
     return [...Array(n1).fill(xmin), ...Array(n2).fill(xmid), ...Array(n3).fill(xmax)];
+  } else { // C: 5 equally-spaced levels, runs distributed as evenly as possible
+    const levels = 5;
+    const xs = [];
+    const base = Math.floor(n/levels);
+    const rem  = n % levels;
+    // Distribute remainder from outermost inward to keep symmetry and maximise Sxx
+    // Order: 0, 4, 1, 3, 2  (edges first)
+    const extraOrder = [0, 4, 1, 3, 2];
+    const counts = Array(levels).fill(base);
+    for (let k = 0; k < rem; k++) counts[extraOrder[k]]++;
+    for (let i = 0; i < levels; i++) {
+      const x = xmin + i*(xmax-xmin)/(levels-1);
+      for (let j = 0; j < counts[i]; j++) xs.push(x);
+    }
+    return xs;
   }
 }
 
@@ -532,73 +567,92 @@ function drawPlot(canvasId, design, trueA, trueB, sigma, alpha, color) {
    UPDATE
    ===================================================================== */
 
-let simDataA, simDataB;
-
 function update() {
   const n     = parseInt(document.getElementById('sl-n').value);
   const sigma = parseFloat(document.getElementById('sl-sigma').value);
   const slope = parseFloat(document.getElementById('sl-slope').value);
   const R     = parseFloat(document.getElementById('sl-range').value);
   const alpha = parseFloat(document.getElementById('sl-alpha').value);
-  const b0    = 0; // intercept fixed at 0 for simplicity
+  const b0    = 0;
 
   const xmin=0, xmax=R;
   const xsA=makeDesign('A',n,xmin,xmax);
   const xsB=makeDesign('B',n,xmin,xmax);
+  const xsC=makeDesign('C',n,xmin,xmax);
 
   // Descriptions
-  const nA1=xsA.filter(x=>x===xmin).length, nA2=xsA.filter(x=>x===xmax).length;
-  const nB1=xsB.filter(x=>x===xmin).length, nB2=xsB.filter(x=>Math.abs(x-(xmin+xmax)/2)<1e-6).length, nB3=n-nB1-nB2;
+  function countAt(xs,x){ return xs.filter(v=>Math.abs(v-x)<1e-6).length; }
+  const nA1=countAt(xsA,xmin), nA2=countAt(xsA,xmax);
+  const nB1=countAt(xsB,xmin), nB2=countAt(xsB,(xmin+xmax)/2), nB3=countAt(xsB,xmax);
   document.getElementById('desc-A').textContent=`${nA1} at x=0, ${nA2} at x=${R}`;
-  document.getElementById('desc-B').textContent=`${nB1} at x=0, ${nB2} at x=${R/2}, ${nB3} at x=${R}`;
+  document.getElementById('desc-B').textContent=`${nB1} at 0, ${nB2} at ${R/2}, ${nB3} at ${R}`;
 
-  // Simulate data (reuse stored noise if sliders move, new on reseed)
+  // Build description for C dynamically
+  const cLevels=5, cStep=(xmax-xmin)/(cLevels-1);
+  const cDesc=Array.from({length:cLevels},(_,i)=>{
+    const x=xmin+i*cStep; return `${countAt(xsC,x)}@${x.toFixed(1)}`;
+  }).join(', ');
+  document.getElementById('desc-C').textContent=cDesc;
+
+  // Simulate
   const ysA=simulate(xsA,slope,b0,sigma);
   const ysB=simulate(xsB,slope,b0,sigma);
+  const ysC=simulate(xsC,slope,b0,sigma);
+  const fitA=linReg(xsA,ysA), fitB=linReg(xsB,ysB), fitC=linReg(xsC,ysC);
 
-  const fitA=linReg(xsA,ysA);
-  const fitB=linReg(xsB,ysB);
-
-  // Draw
   drawPlot('canvasA', {xs:xsA,ys:ysA,fit:fitA}, slope,b0,sigma,alpha,'#3b82f6');
   drawPlot('canvasB', {xs:xsB,ys:ysB,fit:fitB}, slope,b0,sigma,alpha,'#f97316');
+  drawPlot('canvasC', {xs:xsC,ys:ysC,fit:fitC}, slope,b0,sigma,alpha,'#10b981');
 
   // ── Comparison stats ──
-  const stA=designStats(xsA), stB=designStats(xsB);
+  const stA=designStats(xsA), stB=designStats(xsB), stC=designStats(xsC);
   const df=n-2;
   const tcrit=tQuantile(1-alpha/2,Math.max(df,1));
   const seA=sigma/Math.sqrt(Math.max(stA.Sxx,1e-12));
   const seB=sigma/Math.sqrt(Math.max(stB.Sxx,1e-12));
-  const ciWA=2*tcrit*seA, ciWB=2*tcrit*seB;
+  const seC=sigma/Math.sqrt(Math.max(stC.Sxx,1e-12));
+  const ciWA=2*tcrit*seA, ciWB=2*tcrit*seB, ciWC=2*tcrit*seC;
   const pwA=computePower(slope,stA.Sxx,sigma,alpha,n);
   const pwB=computePower(slope,stB.Sxx,sigma,alpha,n);
+  const pwC=computePower(slope,stC.Sxx,sigma,alpha,n);
 
+  const maxSxx=Math.max(stA.Sxx,stB.Sxx,stC.Sxx);
   document.getElementById('sxx-A').textContent=stA.Sxx.toFixed(2);
   document.getElementById('sxx-B').textContent=stB.Sxx.toFixed(2);
-  const maxSxx=Math.max(stA.Sxx,stB.Sxx);
+  document.getElementById('sxx-C').textContent=stC.Sxx.toFixed(2);
   document.getElementById('bar-sxx-A').style.width=(stA.Sxx/maxSxx*100)+'%';
   document.getElementById('bar-sxx-B').style.width=(stB.Sxx/maxSxx*100)+'%';
-  document.getElementById('ratio-sxx').textContent=(stA.Sxx/Math.max(stB.Sxx,1e-12)).toFixed(3);
+  document.getElementById('bar-sxx-C').style.width=(stC.Sxx/maxSxx*100)+'%';
 
+  const maxSE=Math.max(seA,seB,seC);
   document.getElementById('se-A').textContent=seA.toFixed(4);
   document.getElementById('se-B').textContent=seB.toFixed(4);
-  const maxSE=Math.max(seA,seB);
+  document.getElementById('se-C').textContent=seC.toFixed(4);
   document.getElementById('bar-se-A').style.width=(seA/maxSE*100)+'%';
   document.getElementById('bar-se-B').style.width=(seB/maxSE*100)+'%';
-  document.getElementById('ratio-se').textContent=((1-seA/seB)*100).toFixed(1)+'%';
+  document.getElementById('bar-se-C').style.width=(seC/maxSE*100)+'%';
+  document.getElementById('ratio-se').textContent=((1-seA/seC)*100).toFixed(1)+'%';
+  document.getElementById('ratio-se-ab').textContent=((1-seA/seB)*100).toFixed(1)+'%';
 
+  const maxCI=Math.max(ciWA,ciWB,ciWC);
   document.getElementById('ci-A').textContent=ciWA.toFixed(4);
   document.getElementById('ci-B').textContent=ciWB.toFixed(4);
-  const maxCI=Math.max(ciWA,ciWB);
+  document.getElementById('ci-C').textContent=ciWC.toFixed(4);
   document.getElementById('bar-ci-A').style.width=(ciWA/maxCI*100)+'%';
   document.getElementById('bar-ci-B').style.width=(ciWB/maxCI*100)+'%';
-  document.getElementById('ratio-ci').textContent=((1-ciWA/ciWB)*100).toFixed(1)+'%';
+  document.getElementById('bar-ci-C').style.width=(ciWC/maxCI*100)+'%';
+  document.getElementById('ratio-ci').textContent=((1-ciWA/ciWC)*100).toFixed(1)+'%';
 
   document.getElementById('pw-A').textContent=(pwA*100).toFixed(1)+'%';
   document.getElementById('pw-B').textContent=(pwB*100).toFixed(1)+'%';
+  document.getElementById('pw-C').textContent=(pwC*100).toFixed(1)+'%';
   document.getElementById('bar-pw-A').style.width=(pwA*100)+'%';
   document.getElementById('bar-pw-B').style.width=(pwB*100)+'%';
-  document.getElementById('pw-note').textContent=`NCP_A=${(Math.abs(slope)*Math.sqrt(stA.Sxx)/sigma).toFixed(2)}, NCP_B=${(Math.abs(slope)*Math.sqrt(stB.Sxx)/sigma).toFixed(2)}`;
+  document.getElementById('bar-pw-C').style.width=(pwC*100)+'%';
+  const ncpA=(Math.abs(slope)*Math.sqrt(stA.Sxx)/sigma).toFixed(2);
+  const ncpB=(Math.abs(slope)*Math.sqrt(stB.Sxx)/sigma).toFixed(2);
+  const ncpC=(Math.abs(slope)*Math.sqrt(stC.Sxx)/sigma).toFixed(2);
+  document.getElementById('pw-note').textContent=`NCP: A=${ncpA}, B=${ncpB}, C=${ncpC}`;
 }
 
 /* =====================================================================
