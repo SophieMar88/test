@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comparaison d'extrapolation linéaire</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f1117;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: #1a1d2e;
+    border-bottom: 1px solid #2a2d3e;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  header h1 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #c8d0e0;
+    letter-spacing: 0.01em;
+  }
+
+  header .badge {
+    font-size: 0.7rem;
+    background: #3b4cca22;
+    border: 1px solid #3b4cca55;
+    color: #8090ff;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 310px 1fr;
+    grid-template-rows: 1fr auto;
+    flex: 1;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  /* ── PANEL GAUCHE ── */
+  .panel {
+    background: #1a1d2e;
+    border-right: 1px solid #2a2d3e;
+    padding: 20px 18px;
+    overflow-y: auto;
+    grid-row: 1 / 3;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .section-title {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #5a6070;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #2a2d3e;
+    padding-bottom: 6px;
+  }
+
+  .control-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .control-row label {
+    font-size: 0.8rem;
+    color: #9aa0b0;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .control-row label span {
+    font-weight: 700;
+    color: #c8d0e0;
+    font-size: 0.85rem;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: #2a2d3e;
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #5060e0;
+    cursor: pointer;
+    border: 2px solid #8090ff;
+  }
+
+  input[type=range]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #5060e0;
+    cursor: pointer;
+    border: 2px solid #8090ff;
+  }
+
+  /* Couleur personnalisée par thème */
+  .range-blue::-webkit-slider-thumb { background: #3b82f6; border-color: #60a5fa; }
+  .range-blue::-moz-range-thumb     { background: #3b82f6; border-color: #60a5fa; }
+  .range-orange::-webkit-slider-thumb { background: #f97316; border-color: #fb923c; }
+  .range-orange::-moz-range-thumb     { background: #f97316; border-color: #fb923c; }
+  .range-green::-webkit-slider-thumb { background: #10b981; border-color: #34d399; }
+  .range-green::-moz-range-thumb     { background: #10b981; border-color: #34d399; }
+
+  .btn {
+    background: #2a2d3e;
+    border: 1px solid #3a3d5e;
+    color: #c8d0e0;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    width: 100%;
+    transition: background 0.15s, border-color 0.15s;
+    margin-top: 4px;
+  }
+  .btn:hover { background: #3a3d5e; border-color: #5060a0; }
+  .btn:active { transform: scale(0.98); }
+
+  .btn-mc {
+    background: #1e3a2e;
+    border-color: #10b981;
+    color: #34d399;
+  }
+  .btn-mc:hover { background: #2a4a3e; }
+
+  .two-point-select {
+    display: flex;
+    gap: 8px;
+  }
+  .two-point-select label {
+    font-size: 0.75rem;
+    color: #9aa0b0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+  }
+  .two-point-select select {
+    background: #2a2d3e;
+    border: 1px solid #3a3d5e;
+    color: #c8d0e0;
+    padding: 5px 6px;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    outline: none;
+  }
+
+  /* ── STATS ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat-card {
+    background: #12151f;
+    border: 1px solid #2a2d3e;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  .stat-card .label {
+    font-size: 0.68rem;
+    color: #5a6070;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  .stat-card .value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-card .sub {
+    font-size: 0.7rem;
+    color: #5a6070;
+    margin-top: 2px;
+  }
+
+  .color-N  { color: #3b82f6; border-color: #3b82f633; }
+  .color-2  { color: #f97316; border-color: #f9731633; }
+
+  .winner-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 5px;
+    vertical-align: middle;
+  }
+  .winner-badge.blue { background: #3b82f622; color: #60a5fa; }
+  .winner-badge.orange { background: #f9731622; color: #fb923c; }
+
+  .mc-results {
+    background: #12151f;
+    border: 1px solid #10b98133;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 0.78rem;
+    line-height: 1.7;
+  }
+  .mc-results .mc-title {
+    color: #10b981;
+    font-weight: 600;
+    margin-bottom: 6px;
+    font-size: 0.8rem;
+  }
+
+  /* ── CANVAS ZONE ── */
+  .chart-area {
+    display: flex;
+    flex-direction: column;
+    padding: 16px 20px 12px;
+    min-height: 0;
+  }
+
+  #mainCanvas {
+    width: 100%;
+    flex: 1;
+    display: block;
+    border-radius: 8px;
+  }
+
+  .legend {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    padding: 10px 0 0;
+    font-size: 0.75rem;
+    color: #7a8090;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .legend-line {
+    width: 20px;
+    height: 2px;
+    border-radius: 1px;
+  }
+
+  .legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 2px solid;
+  }
+
+  .legend-dash {
+    width: 22px;
+    height: 0;
+    border-top: 2px dashed;
+  }
+
+  /* ── BOTTOM STATS ── */
+  .bottom-stats {
+    background: #1a1d2e;
+    border-top: 1px solid #2a2d3e;
+    padding: 12px 20px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 0.78rem;
+    color: #7a8090;
+  }
+
+  .bottom-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .bottom-stat strong {
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+
+  .N-color { color: #3b82f6; }
+  .T-color { color: #f97316; }
+  .v-color { color: #a78bfa; }
+
+  @media (max-width: 800px) {
+    .layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+    .panel { grid-row: auto; border-right: none; border-bottom: 1px solid #2a2d3e; max-height: 50vh; }
+    .chart-area { min-height: 340px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Comparaison d'extrapolation linéaire</h1>
+  <span class="badge">Simulation interactive</span>
+</header>
+
+<div class="layout">
+  <!-- ── PANNEAU DE CONTRÔLE ── -->
+  <aside class="panel">
+
+    <div>
+      <div class="section-title">Modèle vrai</div>
+      <div class="control-row">
+        <label>Pente réelle (a) <span id="lbl-slope">1.0</span></label>
+        <input type="range" id="sl-slope" min="-3" max="3" step="0.1" value="1" class="range-blue">
+      </div>
+      <div class="control-row" style="margin-top:10px">
+        <label>Ordonnée à l'origine (b) <span id="lbl-inter">0.0</span></label>
+        <input type="range" id="sl-inter" min="-5" max="5" step="0.5" value="0" class="range-blue">
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Données expérimentales</div>
+      <div class="control-row">
+        <label>Nb points N (régression) <span id="lbl-n">6</span></label>
+        <input type="range" id="sl-n" min="3" max="25" step="1" value="6" class="range-blue">
+      </div>
+      <div class="control-row" style="margin-top:10px">
+        <label>Bruit expérimental σ <span id="lbl-noise">0.5</span></label>
+        <input type="range" id="sl-noise" min="0.0" max="5" step="0.05" value="0.5" class="range-orange">
+      </div>
+      <div class="control-row" style="margin-top:10px">
+        <label>Étendue des points x<sub>min</sub>…x<sub>max</sub> <span id="lbl-span">4</span></label>
+        <input type="range" id="sl-span" min="1" max="10" step="0.5" value="4" class="range-blue">
+      </div>
+      <button class="btn" id="btn-reseed">↻ Nouveau tirage aléatoire</button>
+    </div>
+
+    <div>
+      <div class="section-title">Extrapolation</div>
+      <div class="control-row">
+        <label>Distance d'extrapolation Δx <span id="lbl-extrap">3</span></label>
+        <input type="range" id="sl-extrap" min="0.5" max="15" step="0.5" value="3" class="range-green">
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Méthode 2 points</div>
+      <p style="font-size:0.75rem;color:#7a8090;margin-bottom:8px;">
+        Choisissez quels deux points parmi les N sont utilisés pour tracer la droite 2-points.
+      </p>
+      <div class="two-point-select">
+        <label>Point A (indice)
+          <select id="sel-p1"></select>
+        </label>
+        <label>Point B (indice)
+          <select id="sel-p2"></select>
+        </label>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Résultats (tirage actuel)</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="label">Erreur N-points</div>
+          <div class="value color-N" id="err-n">—</div>
+          <div class="sub">régression MCO</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Erreur 2-points</div>
+          <div class="value color-2" id="err-2">—</div>
+          <div class="sub">droite simple</div>
+        </div>
+        <div class="stat-card" style="grid-column:1/-1">
+          <div class="label">Meilleure méthode</div>
+          <div class="value" id="winner" style="font-size:0.9rem">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Monte-Carlo (1 000 tirages)</div>
+      <button class="btn btn-mc" id="btn-mc">▶ Lancer la simulation</button>
+      <div class="mc-results" id="mc-box" style="display:none"></div>
+    </div>
+
+  </aside>
+
+  <!-- ── GRAPHIQUE ── -->
+  <section class="chart-area">
+    <canvas id="mainCanvas"></canvas>
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-dash" style="border-color:#aaa"></div>
+        <span>Droite vraie</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="border-color:#60a5fa;background:#3b82f633"></div>
+        <span>Points expérimentaux (±σ)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#3b82f6"></div>
+        <span>Régression N-pts</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#f97316"></div>
+        <span>Droite 2-pts</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="border-color:#3b82f6;background:#3b82f6;width:11px;height:11px"></div>
+        <span>Prédiction N-pts</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="border-color:#f97316;background:#f97316;width:11px;height:11px"></div>
+        <span>Prédiction 2-pts</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── BARRE INFÉRIEURE ── -->
+  <footer class="bottom-stats">
+    <div class="bottom-stat">
+      <span class="N-color">■</span>
+      <span>Pente estimée N-pts :</span>
+      <strong class="N-color" id="slope-n">—</strong>
+    </div>
+    <div class="bottom-stat">
+      <span class="T-color">■</span>
+      <span>Pente estimée 2-pts :</span>
+      <strong class="T-color" id="slope-2">—</strong>
+    </div>
+    <div class="bottom-stat">
+      <span class="v-color">■</span>
+      <span>Valeur vraie à x<sub>t</sub> :</span>
+      <strong class="v-color" id="true-val">—</strong>
+    </div>
+    <div class="bottom-stat">
+      <span>x extrap. :</span>
+      <strong id="x-extrap">—</strong>
+    </div>
+  </footer>
+</div>
+
+<script>
+/* ===== ÉTAT GLOBAL ===== */
+let seed   = 42;
+let noiseData = [];   // bruit figé pour le tirage actuel
+let N      = 6;
+
+/* ===== UTILITAIRES ===== */
+// PRNG déterministe (Mulberry32)
+function mulberry32(s) {
+  return function() {
+    s |= 0; s = s + 0x6D2B79F5 | 0;
+    let t = Math.imul(s ^ s >>> 15, 1 | s);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function gaussianRand(rand) {
+  // Box-Muller
+  const u = rand(), v = rand();
+  return Math.sqrt(-2 * Math.log(u + 1e-10)) * Math.cos(2 * Math.PI * v);
+}
+
+function linReg(xs, ys) {
+  const n = xs.length;
+  let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  for (let i = 0; i < n; i++) { sx += xs[i]; sy += ys[i]; sxy += xs[i]*ys[i]; sxx += xs[i]*xs[i]; }
+  const denom = n * sxx - sx * sx;
+  if (Math.abs(denom) < 1e-12) return { a: 0, b: sy / n };
+  const a = (n * sxy - sx * sy) / denom;
+  const b = (sy - a * sx) / n;
+  return { a, b };
+}
+
+function fmtN(v, d=3) { return isFinite(v) ? v.toFixed(d) : '—'; }
+
+/* ===== GÉNÉRATION DES DONNÉES ===== */
+function generateNoise(n, rand) {
+  return Array.from({length: n}, () => gaussianRand(rand));
+}
+
+function reseed() {
+  seed = Date.now() & 0xFFFFFF;
+  rebuildNoise();
+}
+
+function rebuildNoise() {
+  const rand = mulberry32(seed);
+  noiseData = generateNoise(50, rand); // on préalloue 50 valeurs
+  redraw();
+}
+
+/* ===== RÉCUPÉRATION DES PARAMÈTRES ===== */
+function getParams() {
+  return {
+    a:      parseFloat(document.getElementById('sl-slope').value),
+    b:      parseFloat(document.getElementById('sl-inter').value),
+    N:      parseInt(document.getElementById('sl-n').value),
+    sigma:  parseFloat(document.getElementById('sl-noise').value),
+    span:   parseFloat(document.getElementById('sl-span').value),
+    extrap: parseFloat(document.getElementById('sl-extrap').value),
+    p1:     parseInt(document.getElementById('sel-p1').value || '0'),
+    p2:     parseInt(document.getElementById('sel-p2').value || '1'),
+  };
+}
+
+/* ===== CONSTRUCTION DES POINTS ===== */
+function buildDataset(params, noise) {
+  const { a, b, N, sigma, span } = params;
+  const xmin = 0;
+  const xs = Array.from({length: N}, (_, i) => xmin + (i / (N - 1)) * span);
+  const ys = xs.map((x, i) => a * x + b + sigma * (noise[i] ?? 0));
+  return { xs, ys };
+}
+
+/* ===== SÉLECTEURS 2 POINTS ===== */
+function refreshSelectors(N, p1, p2) {
+  const s1 = document.getElementById('sel-p1');
+  const s2 = document.getElementById('sel-p2');
+  const v1 = Math.min(p1, N-2);
+  const v2 = Math.min(p2, N-1);
+  s1.innerHTML = '';
+  s2.innerHTML = '';
+  for (let i = 0; i < N; i++) {
+    s1.innerHTML += `<option value="${i}" ${i===v1?'selected':''}>Pt ${i+1}</option>`;
+    s2.innerHTML += `<option value="${i}" ${i===v2?'selected':''}>Pt ${i+1}</option>`;
+  }
+}
+
+/* ===== DESSIN ===== */
+const canvas = document.getElementById('mainCanvas');
+const ctx    = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  const dpr  = window.devicePixelRatio || 1;
+  canvas.width  = rect.width  * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+}
+
+function redraw() {
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width === 0) { requestAnimationFrame(redraw); return; }
+  resizeCanvas();
+
+  const p = getParams();
+  refreshSelectors(p.N, p.p1, p.p2);
+
+  const { xs, ys } = buildDataset(p, noiseData);
+
+  // Indices des 2 points sélectionnés (clamp sécurisé)
+  const i1 = Math.max(0, Math.min(p.p1, p.N-1));
+  const i2 = Math.max(0, Math.min(p.p2, p.N-1));
+
+  // Régression N points
+  const regN = linReg(xs, ys);
+
+  // Droite 2 points
+  const dx2 = xs[i2] - xs[i1];
+  let reg2;
+  if (Math.abs(dx2) < 1e-12) {
+    reg2 = { a: 0, b: (ys[i1]+ys[i2])/2 };
+  } else {
+    const a2 = (ys[i2] - ys[i1]) / dx2;
+    const b2 = ys[i1] - a2 * xs[i1];
+    reg2 = { a: a2, b: b2 };
+  }
+
+  // Point d'extrapolation
+  const xMax    = xs[xs.length - 1];
+  const xTarget = xMax + p.extrap;
+  const yTrue   = p.a * xTarget + p.b;
+  const yPredN  = regN.a * xTarget + regN.b;
+  const yPred2  = reg2.a * xTarget + reg2.b;
+  const errN    = Math.abs(yPredN - yTrue);
+  const err2    = Math.abs(yPred2 - yTrue);
+
+  // Mise à jour stats textuelles
+  document.getElementById('err-n').textContent   = fmtN(errN);
+  document.getElementById('err-2').textContent   = fmtN(err2);
+  document.getElementById('slope-n').textContent = fmtN(regN.a,3) + ' (b=' + fmtN(regN.b,2) + ')';
+  document.getElementById('slope-2').textContent = fmtN(reg2.a,3) + ' (b=' + fmtN(reg2.b,2) + ')';
+  document.getElementById('true-val').textContent = fmtN(yTrue);
+  document.getElementById('x-extrap').textContent = fmtN(xTarget,2);
+
+  const winnerEl = document.getElementById('winner');
+  if (errN < err2) {
+    winnerEl.innerHTML = '<span class="winner-badge blue">N-points</span> meilleure par ' + fmtN(err2-errN) + ' unités';
+  } else if (err2 < errN) {
+    winnerEl.innerHTML = '<span class="winner-badge orange">2-points</span> meilleure par ' + fmtN(errN-err2) + ' unités';
+  } else {
+    winnerEl.textContent = 'Égalité';
+  }
+
+  /* ===== VIEWPORT ===== */
+  const W = rect.width;
+  const H = rect.height;
+  const pad = { l: 58, r: 40, t: 20, b: 46 };
+  const plotW = W - pad.l - pad.r;
+  const plotH = H - pad.t - pad.b;
+
+  // Bornes
+  const allY = [...ys, yTrue, yPredN, yPred2,
+    regN.a * 0 + regN.b, reg2.a * 0 + reg2.b,
+    p.a * 0 + p.b];
+  const yRange = [Math.min(...allY) - 1, Math.max(...allY) + 1];
+  const xRange = [-0.3, xTarget + 0.5];
+
+  function toScreen(x, y) {
+    return [
+      pad.l + (x - xRange[0]) / (xRange[1] - xRange[0]) * plotW,
+      pad.t + (1 - (y - yRange[0]) / (yRange[1] - yRange[0])) * plotH
+    ];
+  }
+
+  /* ===== FOND ===== */
+  ctx.fillStyle = '#0b0d14';
+  ctx.fillRect(0, 0, W, H);
+
+  /* ===== GRILLE ===== */
+  ctx.strokeStyle = '#1e2030';
+  ctx.lineWidth = 1;
+  const nGridX = 8, nGridY = 6;
+  for (let i = 0; i <= nGridX; i++) {
+    const x = xRange[0] + i * (xRange[1] - xRange[0]) / nGridX;
+    const [sx] = toScreen(x, 0);
+    ctx.beginPath(); ctx.moveTo(sx, pad.t); ctx.lineTo(sx, pad.t + plotH); ctx.stroke();
+  }
+  for (let i = 0; i <= nGridY; i++) {
+    const y = yRange[0] + i * (yRange[1] - yRange[0]) / nGridY;
+    const [, sy] = toScreen(0, y);
+    ctx.beginPath(); ctx.moveTo(pad.l, sy); ctx.lineTo(pad.l + plotW, sy); ctx.stroke();
+  }
+
+  /* ===== ZONE D'EXTRAPOLATION ===== */
+  const [sxMax] = toScreen(xMax, 0);
+  ctx.fillStyle = '#1a2a1a22';
+  ctx.fillRect(sxMax, pad.t, pad.l + plotW - sxMax, plotH);
+  ctx.strokeStyle = '#2a4a2a';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(sxMax, pad.t); ctx.lineTo(sxMax, pad.t + plotH); ctx.stroke();
+  ctx.setLineDash([]);
+
+  /* ===== AXES ===== */
+  ctx.strokeStyle = '#3a3d5e';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t);
+  ctx.lineTo(pad.l, pad.t + plotH);
+  ctx.lineTo(pad.l + plotW, pad.t + plotH);
+  ctx.stroke();
+
+  // Ticks + labels Y
+  ctx.fillStyle = '#5a6070';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= nGridY; i++) {
+    const y = yRange[0] + i * (yRange[1] - yRange[0]) / nGridY;
+    const [, sy] = toScreen(0, y);
+    ctx.fillText(y.toFixed(1), pad.l - 6, sy + 4);
+  }
+
+  // Ticks + labels X
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#5a6070';
+  for (let i = 0; i <= nGridX; i++) {
+    const x = xRange[0] + i * (xRange[1] - xRange[0]) / nGridX;
+    const [sx] = toScreen(x, 0);
+    ctx.fillText(x.toFixed(1), sx, pad.t + plotH + 16);
+  }
+
+  // Label axes
+  ctx.fillStyle = '#7a8090';
+  ctx.font = '12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('x', pad.l + plotW / 2, H - 4);
+  ctx.save();
+  ctx.translate(14, pad.t + plotH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('y', 0, 0);
+  ctx.restore();
+
+  /* ===== DROITE VRAIE ===== */
+  function drawLine(a, b, color, dash=[]) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash(dash);
+    const [x0, y0] = toScreen(xRange[0], a * xRange[0] + b);
+    const [x1, y1] = toScreen(xRange[1], a * xRange[1] + b);
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  drawLine(p.a, p.b, '#888888', [6, 4]);
+
+  /* ===== DROITE N-POINTS ===== */
+  drawLine(regN.a, regN.b, '#3b82f6');
+
+  /* ===== DROITE 2-POINTS ===== */
+  drawLine(reg2.a, reg2.b, '#f97316');
+
+  /* ===== BARRES D'ERREUR + POINTS ===== */
+  xs.forEach((x, i) => {
+    const y = ys[i];
+    const [sx, sy] = toScreen(x, y);
+    const [, syUp]  = toScreen(x, y + p.sigma);
+    const [, syDn]  = toScreen(x, y - p.sigma);
+
+    // barre d'erreur
+    ctx.strokeStyle = '#3b82f688';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(sx, syUp); ctx.lineTo(sx, syDn); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx-4, syUp); ctx.lineTo(sx+4, syUp); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx-4, syDn); ctx.lineTo(sx+4, syDn); ctx.stroke();
+
+    // point
+    const isSelected = (i === i1 || i === i2);
+    ctx.beginPath();
+    ctx.arc(sx, sy, isSelected ? 7 : 5, 0, 2*Math.PI);
+    ctx.fillStyle = isSelected ? '#f9731633' : '#3b82f622';
+    ctx.fill();
+    ctx.strokeStyle = isSelected ? '#f97316' : '#60a5fa';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // numéro du point
+    ctx.fillStyle = '#aaa';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(i+1, sx, sy - 10);
+  });
+
+  /* ===== VALEUR VRAIE AU POINT D'EXTRAPOLATION ===== */
+  const [stx, sty] = toScreen(xTarget, yTrue);
+  ctx.strokeStyle = '#aaaaaa55';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(stx, pad.t); ctx.lineTo(stx, pad.t+plotH); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.arc(stx, sty, 5, 0, 2*Math.PI);
+  ctx.fillStyle = '#ffffff22';
+  ctx.fill();
+  ctx.strokeStyle = '#aaa';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  /* ===== PRÉDICTION N-POINTS ===== */
+  const [snx, sny] = toScreen(xTarget, yPredN);
+  ctx.beginPath();
+  ctx.arc(snx, sny, 7, 0, 2*Math.PI);
+  ctx.fillStyle = '#3b82f6cc';
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // segment d'erreur N
+  if (Math.abs(yPredN - yTrue) > 0.01) {
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(snx, sny); ctx.lineTo(stx, sty); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  /* ===== PRÉDICTION 2-POINTS ===== */
+  const [s2x, s2y] = toScreen(xTarget, yPred2);
+  ctx.beginPath();
+  ctx.arc(s2x, s2y, 7, 0, 2*Math.PI);
+  ctx.fillStyle = '#f97316cc';
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // segment d'erreur 2
+  if (Math.abs(yPred2 - yTrue) > 0.01) {
+    ctx.strokeStyle = '#f97316';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(s2x, s2y); ctx.lineTo(stx, sty); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  /* ===== ANNOTATIONS ===== */
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'left';
+
+  ctx.fillStyle = '#3b82f6';
+  ctx.fillText(`N: ε=${fmtN(errN)}`, snx + 10, sny - 4);
+
+  ctx.fillStyle = '#f97316';
+  ctx.fillText(`2: ε=${fmtN(err2)}`, s2x + 10, s2y + 12);
+
+  // Label "zone extrap"
+  ctx.font = '10px sans-serif';
+  ctx.fillStyle = '#3a6a3a';
+  ctx.textAlign = 'center';
+  ctx.fillText('extrapolation', (sxMax + pad.l + plotW) / 2, pad.t + 14);
+}
+
+/* ===== MONTE-CARLO ===== */
+function runMonteCarlo() {
+  const p = getParams();
+  const M = 1000;
+  const rand = mulberry32(Date.now() & 0xFFFFFF);
+
+  let sumN = 0, sumN2 = 0, sum2 = 0, sum22 = 0;
+  let winN = 0, win2 = 0, tie = 0;
+
+  for (let m = 0; m < M; m++) {
+    const noise = Array.from({length: p.N}, () => gaussianRand(rand));
+    const { xs, ys } = buildDataset(p, noise);
+
+    const i1 = Math.max(0, Math.min(p.p1, p.N-1));
+    const i2 = Math.max(0, Math.min(p.p2, p.N-1));
+
+    const rN = linReg(xs, ys);
+    const dx2 = xs[i2] - xs[i1];
+    let r2;
+    if (Math.abs(dx2) < 1e-12) { r2 = {a:0, b:(ys[i1]+ys[i2])/2}; }
+    else { const a2=(ys[i2]-ys[i1])/dx2; r2={a:a2, b:ys[i1]-a2*xs[i1]}; }
+
+    const xMax    = xs[xs.length - 1];
+    const xTarget = xMax + p.extrap;
+    const yTrue   = p.a * xTarget + p.b;
+
+    const eN = Math.abs(rN.a * xTarget + rN.b - yTrue);
+    const e2 = Math.abs(r2.a * xTarget + r2.b - yTrue);
+    sumN  += eN;  sumN2 += eN*eN;
+    sum2  += e2;  sum22 += e2*e2;
+    if (eN < e2) winN++; else if (e2 < eN) win2++; else tie++;
+  }
+
+  const muN  = sumN  / M;
+  const mu2  = sum2  / M;
+  const stdN = Math.sqrt(sumN2/M - muN*muN);
+  const std2 = Math.sqrt(sum22/M - mu2*mu2);
+
+  const box = document.getElementById('mc-box');
+  box.style.display = 'block';
+  box.innerHTML = `
+    <div class="mc-title">Résultats sur ${M} tirages</div>
+    <table style="border-collapse:collapse;width:100%;font-size:0.77rem">
+      <thead>
+        <tr style="color:#5a6070;font-size:0.68rem">
+          <th style="text-align:left;padding:2px 0">Méthode</th>
+          <th style="text-align:right;padding:2px 4px">⟨ε⟩</th>
+          <th style="text-align:right;padding:2px 0">σ(ε)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="color:#3b82f6;padding:3px 0">N-points (${p.N})</td>
+          <td style="text-align:right;color:#c8d0e0;padding:3px 4px"><strong>${fmtN(muN)}</strong></td>
+          <td style="text-align:right;color:#7a8090">${fmtN(stdN)}</td>
+        </tr>
+        <tr>
+          <td style="color:#f97316;padding:3px 0">2-points (${i1old(p)+1}/${i2old(p)+1})</td>
+          <td style="text-align:right;color:#c8d0e0;padding:3px 4px"><strong>${fmtN(mu2)}</strong></td>
+          <td style="text-align:right;color:#7a8090">${fmtN(std2)}</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:8px;border-top:1px solid #2a2d3e;padding-top:6px">
+      N-pts meilleure : <strong style="color:#3b82f6">${winN}</strong> fois (${(100*winN/M).toFixed(1)}%)<br>
+      2-pts meilleure : <strong style="color:#f97316">${win2}</strong> fois (${(100*win2/M).toFixed(1)}%)<br>
+      Égalité : <strong style="color:#aaa">${tie}</strong> fois
+    </div>
+    <div style="margin-top:6px;font-size:0.7rem;color:#5a6070">
+      Gain moyen N-pts : ${mu2>muN?'<span style="color:#10b981">−'+fmtN(mu2-muN)+'</span>':'<span style="color:#ef4444">+'+fmtN(muN-mu2)+'</span>'} unités
+    </div>
+  `;
+}
+
+function i1old(p){ return Math.max(0,Math.min(p.p1,p.N-1)); }
+function i2old(p){ return Math.max(0,Math.min(p.p2,p.N-1)); }
+
+/* ===== BINDING ===== */
+function bind(id, lblId, transform) {
+  const el = document.getElementById(id);
+  const lbl = document.getElementById(lblId);
+  el.addEventListener('input', () => {
+    const v = transform ? transform(el.value) : parseFloat(el.value);
+    lbl.textContent = fmtN(v, 1);
+    if (id === 'sl-n') {
+      N = parseInt(el.value);
+      refreshSelectors(N, 0, N-1);
+    }
+    redraw();
+  });
+  // init label
+  const v0 = transform ? transform(el.value) : parseFloat(el.value);
+  lbl.textContent = fmtN(v0, 1);
+}
+
+bind('sl-slope', 'lbl-slope');
+bind('sl-inter', 'lbl-inter');
+bind('sl-n',     'lbl-n',     v => parseInt(v));
+bind('sl-noise', 'lbl-noise');
+bind('sl-span',  'lbl-span');
+bind('sl-extrap','lbl-extrap');
+
+document.getElementById('sel-p1').addEventListener('change', redraw);
+document.getElementById('sel-p2').addEventListener('change', redraw);
+document.getElementById('btn-reseed').addEventListener('click', reseed);
+document.getElementById('btn-mc').addEventListener('click', runMonteCarlo);
+
+window.addEventListener('resize', redraw);
+
+/* ===== INIT ===== */
+rebuildNoise();
+</script>
+</body>
+</html>
