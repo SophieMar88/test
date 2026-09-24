@@ -568,9 +568,48 @@ function importCSV(event) {
   event.target.value = '';
 }
 
-// =====================================================================
-// REGRESSION MATH
-// =====================================================================
+// ===================================================================
+// MATHÉMATIQUES DE RÉGRESSION
+//
+// getValidData(batch) → filtre les lignes avec sigma1>0 et fc>0
+// averageByLevel(data) → moyenne les réplicats au même niveau σ₁
+//
+// linearReg(xs, ys)  → régression linéaire ordinaire y = a + b·x
+//   Retourne { a, b, r2 } ou null
+//
+// fitLinear(xs,ys)   → alias de linearReg
+//
+// fitPower(xs,ys)    → modèle puissance fc = a·σ₁^b
+//   Linéarise : ln(fc) = ln(a) + b·ln(σ₁), puis régression linéaire
+//   R² recalculé dans l'espace original
+//
+// fitLog(xs,ys)      → modèle logarithmique fc = a + b·ln(σ₁)
+//   Régression linéaire sur (ln(σ₁), fc)
+//
+// fitMehos(xs,ys)    → modèle quadratique contraint (méthode Mehos)
+//   Étape 1 : estimation de a (ordonnée à l'origine) par interpolation
+//             sur les 2 points de σ₁ les plus bas, clampé à ≥ 0
+//   Étape 2 : y' = fc - a, puis résolution du système 2×2 par la règle
+//             de Cramer pour obtenir b et c (fc = a + b·σ₁ + c·σ₁²)
+//
+// fitDensity(xs, rhos) → loi puissance ρ_b = ρB0·(σ₁/1000)^β
+//   Linéarise : ln(ρ_b) = ln(ρB0) + β·ln(σ₁/1000)
+//
+// criticalSigma1(model, params, ff) → σ₁ critique = intersection fc(σ₁) = σ₁/ff
+//   linear  : σ₁_c = a / (1/ff − b)            [forme close]
+//   power   : σ₁_c = (1/(a·ff))^(1/(b−1))       [forme close]
+//   log     : bissection sur a + b·ln(x) − x/ff = 0
+//   mehos   : discriminant de c·x² + (b−1/ff)·x + a = 0 → plus petite racine positive
+//
+// densityAtSigma1(rhoB0, beta, sigma1) → ρ_b = ρB0·(σ₁/1000)^β
+//
+// Hfactor(type, theta) → facteur H(θ') selon la géométrie de la trémie :
+//   conique  : (130 + θ) / 65
+//   carré    : 0.9 × (130 + θ) / 65
+//   plan-flow: (200 + θ) / 200
+//
+// Bcrit(H, sigma1, rhoB) → B_crit (cm) = H · σ₁ · 100 / (ρ_b · 9.81)
+// ===================================================================
 function getValidData(batch) {
   return (batch.data || []).filter(r =>
     r.sigma1 !== '' && r.fc !== '' &&
@@ -739,9 +778,16 @@ function densityAtSigma1(rhoB0, beta, sigma1) {
   return rhoB0 * Math.pow(sigma1/1000, beta);
 }
 
-// =====================================================================
-// REGRESSION RUNNER
-// =====================================================================
+// ===================================================================
+// LANCEMENT DE LA RÉGRESSION (runRegression)
+// Lit le lot actif, les paramètres du formulaire, puis :
+//   1. Filtre et moyenne les données
+//   2. Sélectionne LP (3 niveaux les plus bas) ou Full selon le radio
+//   3. Ajuste le modèle FFC choisi (linear/power/log/mehos)
+//   4. Ajuste la densité (loi puissance) en incluant le point de référence
+//   5. Calcule σ₁_crit par intersection fc = σ₁/ff
+//   6. Rafraîchit le tableau FFC, Hausner, les coefficients et les graphiques
+// ===================================================================
 function runRegression() {
   const batch = batches[activeBatch];
   const rawData = getValidData(batch);
@@ -813,6 +859,12 @@ function runRegression() {
   setStatus(msg);
 }
 
+// jenikeClass(ffc)  → retourne { label, cls } selon la classification Jenike :
+//   FFC < 1 : Non coulant | 1–2 : Très cohésif | 2–4 : Cohésif
+//   4–10 : Facile à couler | > 10 : Libre
+//
+// hausnerClass(hr)  → retourne { label, cls } selon USP (7 niveaux) :
+//   HR < 1.05 : Excellent ... > 1.45 : Inadmissible
 function jenikeClass(ffc) {
   if (ffc < 1) return {label:'Non coulant', cls:'badge-red'};
   if (ffc < 2) return {label:'Très cohésif', cls:'badge-red'};
@@ -831,6 +883,15 @@ function hausnerClass(hr) {
   return {label:'Inadmissible', cls:'badge-red'};
 }
 
+// renderFFCTable(averaged, reg)
+//   Remplit le tableau FFC : σ₁, fc, FFC = σ₁/fc, classification Jenike
+//
+// renderHausnerTable(averaged)
+//   Remplit le tableau Hausner : σ₁, HR moyen, classification USP
+//
+// renderCoeffDisplay(reg, sigma1_crit, ff, dens)
+//   Affiche les coefficients du modèle ajusté, R², σ₁_crit et
+//   les paramètres de la régression densité (ρB0, β)
 function renderFFCTable(averaged, reg) {
   const tbody = document.getElementById('ffc-tbody');
   tbody.innerHTML = '';
@@ -894,6 +955,8 @@ function renderCoeffDisplay(reg, sigma1_crit, ff, dens) {
   eld.innerHTML = dhtml;
 }
 
+// clearCharts() : efface les deux canvases et remet le bloc coefficients
+//   à son état initial (utilisé si les données sont insuffisantes)
 function clearCharts() {
   ['ffc-chart','density-chart'].forEach(id => {
     const c = document.getElementById(id);
@@ -903,9 +966,10 @@ function clearCharts() {
   document.getElementById('density-coeff').innerHTML='<span style="color:#667">— Lancer la régression —</span>';
 }
 
-// =====================================================================
-// CANVAS CHARTS
-// =====================================================================
+// ===================================================================
+// DESSIN DES GRAPHIQUES (CANVAS 2D)
+// Constantes de couleur partagées par les deux graphiques.
+// ===================================================================
 const CHART_BG = '#0a0d14';
 const AXIS_COLOR = '#4a5566';
 const GRID_COLOR = '#1e2235';
@@ -914,6 +978,12 @@ const DATA_COLOR = '#7eb8f7';
 const CURVE_COLOR = '#40c080';
 const DENSITY_COLOR = '#f0a040';
 
+// drawAxes(ctx, canvas, margin, xMin, xMax, yMin, yMax, xLabel, yLabel)
+//   Dessine le fond, les lignes de grille, les axes et les étiquettes
+//   sur un canvas 2D. margin = { left, right, top, bottom } en pixels.
+//
+// toCanvas(x, y, margin, xMin, xMax, yMin, yMax, W, H)
+//   Convertit des coordonnées "données" (x,y) en pixels canvas (cx,cy).
 function drawAxes(ctx, cx, margin, xMin, xMax, yMin, yMax, xLabel, yLabel) {
   const {left:ml,right:mr,top:mt,bottom:mb} = margin;
   const W = cx.width - ml - mr;
@@ -967,6 +1037,12 @@ function toCanvas(x, y, margin, xMin, xMax, yMin, yMax, W, H) {
   return {cx,cy};
 }
 
+// drawFFCChart(averaged, reg, sigma1_crit, ff)
+//   Trace la courbe de flux (FFC chart) sur le canvas #ffc-chart :
+//   — lignes de référence ff=1.3 / 1.7 / 4 / 10 en pointillés
+//   — courbe de régression fc(σ₁) via evalModel()
+//   — points expérimentaux (σ₁ moyennés)
+//   — croix orange à σ₁_crit (si calculé)
 function drawFFCChart(averaged, reg, sigma1_crit, ff) {
   const canvas = document.getElementById('ffc-chart');
   const ctx = canvas.getContext('2d');
@@ -1049,6 +1125,11 @@ function drawFFCChart(averaged, reg, sigma1_crit, ff) {
   }
 }
 
+// drawDensityChart(densData, dens)
+//   Trace la courbe densité ρ_b(σ₁) sur le canvas #density-chart :
+//   — courbe loi puissance ρ_b = ρB0·(σ₁/1000)^β
+//   — équation affichée sur le graphique
+//   — points expérimentaux (σ₁ moyennés)
 function drawDensityChart(densData, dens) {
   const canvas = document.getElementById('density-chart');
   const ctx = canvas.getContext('2d');
@@ -1099,6 +1180,9 @@ function drawDensityChart(densData, dens) {
   });
 }
 
+// evalModel(reg, x) → évalue fc = f(x) pour le modèle stocké dans reg
+//   Dispatche selon reg.model : linear / power / log / mehos
+//   Retourne null si le modèle est inconnu ou x ≤ 0
 function evalModel(reg, x) {
   if (!reg || x <= 0) return null;
   if (reg.model==='linear') return reg.a + reg.b*x;
@@ -1108,9 +1192,24 @@ function evalModel(reg, x) {
   return null;
 }
 
-// =====================================================================
-// VESSEL TABLE
-// =====================================================================
+// ===================================================================
+// BASE DE DONNÉES DES CUVES
+// VESSEL_TYPES : liste des types reconnus avec leurs labels FR
+//
+// renderVesselTable() : reconstruit le tableau des cuves avec champs éditables
+//   — chaque cellule est un <input> lié directement à vessels[i]
+//
+// escHtml(s) : échappe les caractères HTML spéciaux (anti-XSS pour les inputs)
+//
+// populateCatalogDropdown() : peuple le <select> du catalogue,
+//   groupé par site (Montpellier Dev, ULC, Ambarès…)
+//
+// addVesselFromCatalog(sel) : copie la cuve sélectionnée dans vessels[]
+//   et rafraîchit le tableau
+//
+// addVessel()    : ajoute une cuve vide éditable manuellement
+// removeVessel(i): supprime la cuve à l'index i
+// ===================================================================
 const VESSEL_TYPES = [
   {val:'conique', label:'Conique/Circulaire'},
   {val:'carre',   label:'Carré'},
@@ -1184,9 +1283,34 @@ function removeVessel(i) {
   renderVesselTable();
 }
 
-// =====================================================================
-// ENGINEERING CALCULATIONS
-// =====================================================================
+// ===================================================================
+// CALCULS MÉCANIQUES EN TRÉMIE
+//
+// janssenStress(rhoB, D, hRect, hFill, k, phiDeg)
+//   Contrainte verticale de Janssen dans la partie cylindrique :
+//   σ_v = ρ·g·R_H / (k·tan φ) · [1 − exp(−k·tan(φ)·h / R_H)]
+//   avec R_H = D/4 (rayon hydraulique du cylindre circulaire)
+//   et h = hFill · hRect (hauteur de remplissage)
+//
+// schulzeOutletStress(rhoB, D, theta, hCone, sigma_v_top, k, phiDeg)
+//   Contrainte active à la sortie de la trémie conique (modèle Schulze) :
+//   n = 2k(1 + tan φ / tan θ) − 1   (exposant de contrainte)
+//   Z0 = D / (2·tan θ)               (hauteur du cône virtuel depuis l'apex)
+//   Z_top = Z0 + H_cone              (hauteur depuis l'apex en haut du cône)
+//   σ_sortie = σ_v_top·(Z0/Z_top)^n + ρ·g·Z_top/(n−1)·[1 − (Z0/Z_top)^(n−1)]
+//   Si n ≈ 1 ou θ ≈ 0 → retourne σ_v_top par défaut
+//
+// analyzeVessel(vessel, regrModel, densReg, params)
+//   Calcul complet pour une cuve :
+//     1. σ₁_crit ← criticalSigma1 (intersection FFC)
+//     2. ρ_b_crit ← densityAtSigma1(σ₁_crit)
+//     3. H(θ') ← Hfactor
+//     4. B_crit (cm) ← Bcrit(H, σ₁_crit, ρ_b_crit)
+//     5. Ratio B_actual / B_crit → statut pass / marginal / fail
+//     6. σ_v Janssen (cylindre) → σ₁ actif (sortie cône, Schulze)
+//     7. État d'écoulement : flowing si σ₁_actif < σ₁_crit, sinon arching
+//   Retourne un objet résultat complet (y compris _regModel pour la carte)
+// ===================================================================
 function Hfactor(type, theta) {
   if (type==='conique') return (130 + theta) / 65;
   if (type==='carre')   return 0.9 * (130 + theta) / 65;
@@ -1294,9 +1418,13 @@ function analyzeVessel(vessel, regrModel, densReg, params) {
   };
 }
 
-// =====================================================================
-// ANALYSIS RUNNER
-// =====================================================================
+// ===================================================================
+// LANCEMENT DE L'ANALYSE (runAnalysis)
+// Lit les paramètres (ff, SF, k, φ, hFill) et le modèle de régression
+// à utiliser (identique à l'onglet Régression ou recalculé).
+// Applique analyzeVessel() à chaque cuve de vessels[].
+// Stocke les résultats dans analysisResults[] puis affiche l'onglet Résultats.
+// ===================================================================
 function runAnalysis() {
   const ff = num(document.getElementById('ff-target').value, 1.7);
   const SF = num(document.getElementById('sf-val').value, 1.5);
@@ -1355,9 +1483,14 @@ function runAnalysis() {
   setStatus(`Analyse complète: ${vessels.length} cuves analysées, ff=${ff}, SF=${SF}`);
 }
 
-// =====================================================================
-// RESULTS RENDERING
-// =====================================================================
+// ===================================================================
+// RENDU DES RÉSULTATS (renderResults)
+// Construit dynamiquement :
+//   1. Un tableau récapitulatif de toutes les cuves (σ₁_crit, B_crit,
+//      ratio, σ₁_actif, état d'écoulement) avec badges colorés
+//   2. Des cartes de détail par cuve (8 métriques clés)
+//   3. Une carte de régime d'écoulement par cuve (canvas) via drawRegimeMap()
+// ===================================================================
 function renderResults() {
   const container = document.getElementById('results-container');
   if (!analysisResults.length) {
@@ -1477,6 +1610,28 @@ function renderResults() {
   });
 }
 
+// ===================================================================
+// CARTE DE RÉGIME D'ÉCOULEMENT PAR CUVE (drawRegimeMap)
+//
+// Axes : X = FFC (= σ₁/fc), Y = ρ_b (kg/m³)
+//
+// Zones colorées (bandes verticales) :
+//   FFC < 1   : rouge     — Non coulant (voûtage certain)
+//   1 à 2     : orange    — Très cohésif
+//   2 à 4     : jaune     — Cohésif
+//   4 à 10    : vert      — Facile à couler
+//   > 10      : bleu      — Libre
+//
+// Courbe limite de voutage (pointillés orange) :
+//   Pour chaque ρ_b, on inverse la formule B_crit pour obtenir
+//   le σ₁ que la trémie impose : σ₁_vessel = B_cm · ρ_b · 9.81 / (H · 100)
+//   puis FFC_limit = σ₁_vessel / fc(σ₁_vessel)
+//   → les points à GAUCHE de cette courbe sont en zone de risque de voûtage.
+//
+// Ligne verticale bleue : FFC correspondant à σ₁_actif calculé par Schulze
+//
+// Points expérimentaux : (σ₁_i/fc_i , ρ_b_i) pour chaque mesure du lot actif
+// ===================================================================
 function drawRegimeMap(res, canvasId) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
@@ -1674,9 +1829,12 @@ function drawRegimeMap(res, canvasId) {
   });
 }
 
-// =====================================================================
-// EXPORT CSV
-// =====================================================================
+// ===================================================================
+// EXPORT CSV (exportCSV)
+// Génère un fichier CSV téléchargeable avec une ligne par cuve analysée.
+// Colonnes : géométrie de cuve, paramètres, σ₁_crit, B_crit, ratio,
+//            statut, contraintes Janssen/Schulze, état d'écoulement.
+// ===================================================================
 function exportCSV() {
   if (!analysisResults.length) { alert('Pas de résultats à exporter.'); return; }
 
