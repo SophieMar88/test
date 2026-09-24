@@ -5,24 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FlowFunction Analyzer — Poudres Pharmaceutiques</title>
 <style>
+/* === Réinitialisation générale & corps de page === */
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0f1117;color:#e0e0e0;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;min-height:100vh}
+/* === Titres h1/h2/h3 === */
 h1{font-size:18px;font-weight:600;color:#7eb8f7;padding:14px 20px 0;letter-spacing:.3px}
 h2{font-size:13px;font-weight:600;color:#a0b4cc;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
 h3{font-size:12px;font-weight:600;color:#8899aa;margin-bottom:6px}
 .subtitle{font-size:11px;color:#667;padding:2px 20px 12px}
-/* Tabs */
+/* === Barre d'onglets === */
 .tab-bar{display:flex;gap:2px;padding:10px 20px 0;border-bottom:1px solid #2a2d3e}
 .tab-btn{padding:8px 18px;background:#1a1d2e;border:1px solid #2a2d3e;border-bottom:none;border-radius:6px 6px 0 0;cursor:pointer;color:#8899aa;font-size:12px;font-weight:500;transition:all .15s}
 .tab-btn:hover{background:#22263a;color:#b0c4de}
 .tab-btn.active{background:#0f1117;color:#7eb8f7;border-color:#3a4d6e}
 .tab-content{display:none;padding:18px 20px}
 .tab-content.active{display:block}
-/* Panels */
+/* === Panneaux (cards) === */
 .panel{background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:14px;margin-bottom:14px}
 .panel-row{display:flex;gap:14px;margin-bottom:14px}
 .panel-row .panel{flex:1;margin-bottom:0}
-/* Form elements */
+/* === Éléments de formulaire (labels, inputs, selects, radios) === */
 label{display:block;font-size:11px;color:#8899aa;margin-bottom:3px}
 input[type=text],input[type=number],select{background:#0f1117;border:1px solid #2a2d3e;border-radius:4px;color:#e0e0e0;padding:5px 8px;font-size:12px;width:100%;transition:border-color .15s}
 input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:#3a6ea5}
@@ -30,7 +32,7 @@ input[type=radio]{accent-color:#3a6ea5}
 .form-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px}
 .form-group{display:flex;flex-direction:column;min-width:100px}
 .form-group.wide{min-width:160px;flex:1}
-/* Buttons */
+/* === Boutons (standard, danger, success, primary) === */
 button{background:#1e3a5f;border:1px solid #2a5a8f;border-radius:4px;color:#7eb8f7;padding:5px 12px;font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap}
 button:hover{background:#245070;border-color:#4a8abf}
 button.danger{background:#3d1a1a;border-color:#7a2828;color:#f08080}
@@ -39,7 +41,7 @@ button.success{background:#1a3d2e;border-color:#2a7a4e;color:#80f0b0}
 button.success:hover{background:#1e5038}
 button.primary{background:#1a3d1a;border-color:#2a6a2a;color:#80d080}
 button.primary:hover{background:#205020}
-/* Tables */
+/* === Tableaux === */
 table{width:100%;border-collapse:collapse;font-size:12px}
 th{background:#12151f;color:#7a8a9a;padding:6px 8px;text-align:left;border-bottom:1px solid #2a2d3e;font-weight:500;white-space:nowrap}
 td{padding:5px 8px;border-bottom:1px solid #1e2130;vertical-align:middle}
@@ -48,26 +50,26 @@ tr:nth-child(even) td{background:#161825}
 tr:nth-child(even):hover td{background:#1e2235}
 td input{padding:3px 5px;font-size:11px;background:#0a0d14;border-color:#1e2130}
 td input:focus{border-color:#3a6ea5}
-/* Batch tabs */
+/* === Onglets de lots (batch tabs) === */
 .batch-tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
 .batch-tab{padding:4px 12px;background:#0f1117;border:1px solid #2a2d3e;border-radius:12px;cursor:pointer;font-size:11px;color:#8899aa;transition:all .15s}
 .batch-tab:hover{border-color:#3a6ea5;color:#7eb8f7}
 .batch-tab.active{background:#1a2a3a;border-color:#3a6ea5;color:#7eb8f7}
-/* Charts */
+/* === Graphiques Canvas === */
 .chart-wrap{position:relative;background:#0a0d14;border:1px solid #2a2d3e;border-radius:6px;padding:4px}
 canvas{display:block}
-/* Badges */
+/* === Badges colorés (statuts Jenike / Hausner) === */
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
 .badge-green{background:#0d2e1a;color:#4ddb90;border:1px solid #1a6038}
 .badge-yellow{background:#2e2300;color:#f0c040;border:1px solid #6e5000}
 .badge-red{background:#2e0d0d;color:#f07070;border:1px solid #7a2020}
 .badge-blue{background:#0d1e2e;color:#70b0f0;border:1px solid #1a4068}
 .badge-grey{background:#1a1d2e;color:#8899aa;border:1px solid #2a2d3e}
-/* Regression info */
+/* === Bloc d'affichage des coefficients de régression === */
 .reg-info{background:#0a0d14;border:1px solid #2a2d3e;border-radius:6px;padding:10px;font-family:monospace;font-size:11px;color:#b0c4de;line-height:1.8}
 .reg-info .eq{color:#80d0ff}
 .reg-info .val{color:#80f0b0}
-/* Results grid */
+/* === Grille de résultats par cuve === */
 .results-vessel{margin-bottom:14px}
 .results-vessel h3{font-size:13px;color:#7eb8f7;padding:8px 0 6px;border-bottom:1px solid #2a2d3e;margin-bottom:8px}
 .results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
@@ -75,7 +77,7 @@ canvas{display:block}
 .result-card .label{font-size:10px;color:#667;margin-bottom:2px}
 .result-card .value{font-size:14px;font-weight:600;color:#e0e0e0}
 .result-card .sub{font-size:10px;color:#8899aa;margin-top:2px}
-/* Scrollable table wrapper */
+/* === Divers (scroll, import, séparateur, erreur, barre de statut) === */
 .table-scroll{overflow-x:auto}
 /* Import area */
 .import-area{font-size:11px;color:#8899aa;margin-top:4px}
@@ -98,7 +100,7 @@ canvas{display:block}
   <button class="tab-btn" onclick="switchTab('resultats')">Résultats</button>
 </div>
 
-<!-- TAB 1: DONNÉES -->
+<!-- ===== ONGLET 1 : DONNÉES ===== Saisie des données SpinTester par lot. Chaque ligne = un essai (σ₁, fc, ρ_b, HR). Supporte l'import CSV. -->
 <div id="tab-donnees" class="tab-content active">
   <div class="panel">
     <h2>Lots (Batches)</h2>
@@ -143,7 +145,7 @@ canvas{display:block}
   </div>
 </div>
 
-<!-- TAB 2: RÉGRESSION -->
+<!-- ===== ONGLET 2 : RÉGRESSION ===== Calcul des modèles fc=f(σ₁) et ρ_b=g(σ₁), tracé des graphiques, classification FFC/Hausner. -->
 <div id="tab-regression" class="tab-content">
   <div class="panel">
     <h2>Paramètres de régression</h2>
@@ -220,7 +222,7 @@ canvas{display:block}
   </div>
 </div>
 
-<!-- TAB 3: ANALYSE / CUVES -->
+<!-- ===== ONGLET 3 : ANALYSE / CUVES ===== Sélection des cuves à analyser (depuis le catalogue ou manuellement) et paramètres d'analyse. -->
 <div id="tab-cuves" class="tab-content">
   <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -270,7 +272,7 @@ canvas{display:block}
   </div>
 </div>
 
-<!-- TAB 4: RÉSULTATS -->
+<!-- ===== ONGLET 4 : RÉSULTATS ===== Résultats du calcul par cuve : B_crit, ratio, σ₁_actif, carte de régime d'écoulement. -->
 <div id="tab-resultats" class="tab-content">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
     <h2 style="margin:0">Résultats par cuve</h2>
@@ -284,9 +286,16 @@ canvas{display:block}
 <div class="status-bar" id="status-bar">Prêt</div>
 
 <script>
-// =====================================================================
-// STATE
-// =====================================================================
+// ===================================================================
+// ÉTAT GLOBAL DE L'APPLICATION
+// batches     : tableau des lots ; chaque lot contient { name, code, data[] }
+//               data[] = tableau de { sigma1, fc, rhoB, Hausner }
+// activeBatch : index du lot actif (affiché dans l'onglet Données)
+// vessels     : cuves à analyser (remplies depuis le catalogue ou manuellement)
+// regrResult  : résultat de la dernière régression FFC  { model, a, b, [c], r2 }
+// densResult  : résultat de la régression densité { rhoB0, beta, r2 }
+// analysisResults : tableau des résultats par cuve (rempli par runAnalysis)
+// ===================================================================
 let batches = [{name:'Lot 1', code:'', data:[]}];
 let activeBatch = 0;
 let vessels = [];
@@ -298,7 +307,13 @@ const DEFAULT_ROWS = 10;
 
 const DEFAULT_VESSELS = [];
 
-// Catalogue extrait de la feuille "Vessel Database" du fichier Excel de référence
+// ===================================================================
+// CATALOGUE DES CUVES
+// Extrait de la feuille "Vessel Database" du fichier Excel de référence.
+// Chaque entrée : { name, site, vol (L), B (cm ouverture), type, theta (°),
+//                  Hcone (mm), Hrect (mm), D (m diamètre cuve) }
+// Types reconnus : "conique" | "carre" | "planflow"
+// ===================================================================
 const VESSEL_CATALOG = [
   {"name":"Dev 1L","site":"Montpellier Dev","vol":1.0,"B":6.436,"type":"conique","theta":41.0,"Hcone":60.6,"Hrect":0.0,"D":0.1325},
   {"name":"Dev 1,5L","site":"Montpellier Dev","vol":1.5,"B":6.35,"type":"conique","theta":41.0,"Hcone":51.52,"Hrect":110.4,"D":0.1325},
@@ -359,6 +374,9 @@ const VESSEL_CATALOG = [
   {"name":"Trémie PZ","site":"Montpellier Dev","vol":1.8,"B":7.1,"type":"conique","theta":30.0,"Hcone":113.0,"Hrect":0.0,"D":0.2}
 ];
 
+// Initialisation au chargement de la page.
+// Crée les cuves par défaut, peuple le dropdown catalogue,
+// charge les données d'exemple et rafraîchit l'affichage.
 function init() {
   vessels = DEFAULT_VESSELS.map(v => Object.assign({},v));
   populateCatalogDropdown();
@@ -381,9 +399,12 @@ function init() {
   setStatus('Données d\'exemple chargées.');
 }
 
-// =====================================================================
-// UTILS
-// =====================================================================
+// ===================================================================
+// UTILITAIRES GÉNÉRAUX
+// setStatus(msg)   → affiche un message dans la barre de statut en bas
+// num(v, fallback) → convertit en nombre (retourne fallback si NaN)
+// fmtN(v, d)       → formate un nombre avec d décimales (retourne '—' si null)
+// ===================================================================
 function setStatus(msg) {
   document.getElementById('status-bar').textContent = msg;
 }
@@ -398,9 +419,12 @@ function fmtN(v, d=2) {
   return v.toFixed(d);
 }
 
-// =====================================================================
-// TAB SWITCHING
-// =====================================================================
+// ===================================================================
+// GESTION DES ONGLETS
+// switchTab(id) : active l'onglet demandé et déclenche le calcul
+//   si l'onglet "regression" est ouvert → relance runRegression()
+//   si l'onglet "resultats" est ouvert et des résultats existent → renderResults()
+// ===================================================================
 function switchTab(id) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -412,9 +436,16 @@ function switchTab(id) {
   if (id === 'resultats' && analysisResults.length) { renderResults(); }
 }
 
-// =====================================================================
-// BATCH MANAGEMENT
-// =====================================================================
+// ===================================================================
+// GESTION DES LOTS (BATCHES)
+// Un lot = un échantillon de poudre avec son jeu de mesures SpinTester.
+// Jusqu'à 5 lots simultanés ; le lot actif est mis en surbrillance.
+// renderBatchTabs() : redessine la rangée d'onglets de lots
+// switchBatch(i)    : change de lot actif et recharge le tableau de données
+// addBatch()        : ajoute un nouveau lot vide
+// removeBatch()     : supprime le lot actif (mini 1 lot)
+// updateBatchMeta() : met à jour nom et code du lot depuis les inputs
+// ===================================================================
 function renderBatchTabs() {
   const c = document.getElementById('batch-tabs');
   c.innerHTML = '';
@@ -457,9 +488,17 @@ function updateBatchMeta() {
   renderBatchTabs();
 }
 
-// =====================================================================
-// DATA TABLE
-// =====================================================================
+// ===================================================================
+// TABLEAU DE DONNÉES SPINTESTER
+// renderDataTable() : reconstruit le tableau HTML depuis batches[activeBatch].data
+//   — complète jusqu'à DEFAULT_ROWS lignes pour confort de saisie
+// updateCell(i, field, val) : met à jour une cellule lors d'une saisie
+// addDataRow()   : ajoute une ligne vide en bas du tableau
+// deleteRow(i)   : supprime la ligne i
+// clearData()    : vide toutes les données du lot actif (avec confirmation)
+// importCSV(evt) : lit un fichier CSV (virgule ou point-virgule),
+//   ignore la ligne d'entête si présente, colonnes attendues : sigma1,fc,rhoB,Hausner
+// ===================================================================
 function renderDataTable() {
   const tbody = document.getElementById('data-tbody');
   const data = batches[activeBatch].data;
