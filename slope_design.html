@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optimal Design for Slope Estimation</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0f1117;
+  color: #e0e0e0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+header {
+  background: #1a1d2e;
+  border-bottom: 1px solid #2a2d3e;
+  padding: 12px 24px;
+}
+header h1 { font-size: 1rem; font-weight: 600; color: #c8d0e0; }
+header p  { font-size: 0.75rem; color: #6070a0; margin-top: 2px; }
+
+/* ── CONTROLS ── */
+.controls {
+  background: #141720;
+  border-bottom: 1px solid #2a2d3e;
+  padding: 10px 24px;
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ctrl { display: flex; flex-direction: column; gap: 2px; min-width: 130px; }
+.ctrl label { font-size: 0.68rem; color: #5a6070; text-transform: uppercase;
+              letter-spacing: 0.08em; display: flex; justify-content: space-between; }
+.ctrl label strong { color: #c8d0e0; font-variant-numeric: tabular-nums; }
+input[type=range] {
+  -webkit-appearance: none; width: 100%; height: 4px;
+  background: #2a2d3e; border-radius: 2px; outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 13px; height: 13px;
+  border-radius: 50%; background: #5060e0; cursor: pointer; border: 2px solid #8090ff;
+}
+.btn-reseed {
+  background: #1e2a3a; border: 1px solid #3b82f6; color: #60a5fa;
+  padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;
+  white-space: nowrap; align-self: flex-end;
+}
+.btn-reseed:hover { background: #2a3a5a; }
+
+/* ── PLOTS ── */
+.plots-area {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+}
+.plot-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 8px;
+  border-right: 1px solid #2a2d3e;
+  min-height: 0;
+}
+.plot-panel:last-child { border-right: none; }
+.plot-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.plot-title { font-size: 0.9rem; font-weight: 700; }
+.title-A { color: #3b82f6; }
+.title-B { color: #f97316; }
+.plot-desc { font-size: 0.7rem; color: #5a6070; }
+canvas { width: 100%; flex: 1; display: block; border-radius: 6px; }
+
+/* ── COMPARISON BAR ── */
+.comparison {
+  background: #1a1d2e;
+  border-top: 1px solid #2a2d3e;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+.metric {
+  padding: 12px 18px;
+  border-right: 1px solid #2a2d3e;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.metric:last-child { border-right: none; }
+.metric-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: #4a5060; }
+.metric-row { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; }
+.metric-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-A { background: #3b82f6; }
+.dot-B { background: #f97316; }
+.metric-val { font-weight: 700; font-variant-numeric: tabular-nums; color: #c8d0e0; min-width: 50px; }
+.metric-bar-track { flex: 1; height: 5px; background: #2a2d3e; border-radius: 3px; overflow: hidden; }
+.metric-bar-fill { height: 100%; border-radius: 3px; }
+.ratio-tag { font-size: 0.68rem; color: #5a6070; }
+.ratio-tag strong { color: #10b981; }
+.winner { font-size: 0.68rem; padding: 2px 6px; border-radius: 10px;
+          background: #10b98122; color: #34d399; align-self: flex-start; }
+
+/* ── LEGEND ── */
+.legend {
+  display: flex; gap: 14px; flex-wrap: wrap; padding: 4px 0 2px;
+  font-size: 0.7rem; color: #6a7080; align-items: center; justify-content: center;
+}
+.leg { display: flex; align-items: center; gap: 4px; }
+.leg-line { width: 16px; height: 2px; border-radius: 1px; }
+.leg-dash { width: 16px; border-top: 2px dashed; }
+.leg-dot  { width: 7px; height: 7px; border-radius: 50%; }
+.leg-band { width: 16px; height: 8px; border-radius: 2px; opacity: 0.4; }
+
+@media (max-width: 700px) {
+  .plots-area { grid-template-columns: 1fr; }
+  .comparison { grid-template-columns: repeat(2, 1fr); }
+  .plot-panel:first-child { border-bottom: 1px solid #2a2d3e; border-right: none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Optimal experimental design for slope estimation — Y = aX + b</h1>
+  <p>When the relationship is linear, concentrating runs at the extremes is always more efficient than spreading them across levels.</p>
+</header>
+
+<div class="controls">
+  <div class="ctrl">
+    <label>Total runs n <strong id="lbl-n">10</strong></label>
+    <input type="range" id="sl-n" min="4" max="30" step="1" value="10">
+  </div>
+  <div class="ctrl">
+    <label>Noise σ <strong id="lbl-sigma">1.0</strong></label>
+    <input type="range" id="sl-sigma" min="0.1" max="5" step="0.1" value="1.0">
+  </div>
+  <div class="ctrl">
+    <label>True slope a <strong id="lbl-slope">1.0</strong></label>
+    <input type="range" id="sl-slope" min="-3" max="3" step="0.1" value="1.0">
+  </div>
+  <div class="ctrl">
+    <label>X range [0, R] <strong id="lbl-range">5</strong></label>
+    <input type="range" id="sl-range" min="1" max="10" step="0.5" value="5">
+  </div>
+  <div class="ctrl">
+    <label>Significance α <strong id="lbl-alpha">0.05</strong></label>
+    <input type="range" id="sl-alpha" min="0.01" max="0.20" step="0.01" value="0.05">
+  </div>
+  <button class="btn-reseed" id="btn-reseed">↻ New simulation</button>
+</div>
+
+<div class="plots-area">
+  <div class="plot-panel">
+    <div class="plot-header">
+      <span class="plot-title title-A">Design A — Extremes only</span>
+      <span class="plot-desc" id="desc-A">…</span>
+    </div>
+    <canvas id="canvasA"></canvas>
+    <div class="legend">
+      <div class="leg"><div class="leg-dash" style="border-color:#aaa"></div><span>True line</span></div>
+      <div class="leg"><div class="leg-line" style="background:#3b82f6"></div><span>Fitted line</span></div>
+      <div class="leg"><div class="leg-band" style="background:#3b82f6"></div><span>95% CI band</span></div>
+      <div class="leg"><div class="leg-dot" style="background:#3b82f6;border:1.5px solid #60a5fa"></div><span>Simulated data</span></div>
+    </div>
+  </div>
+  <div class="plot-panel">
+    <div class="plot-header">
+      <span class="plot-title title-B">Design B — Three levels (low / mid / high)</span>
+      <span class="plot-desc" id="desc-B">…</span>
+    </div>
+    <canvas id="canvasB"></canvas>
+    <div class="legend">
+      <div class="leg"><div class="leg-dash" style="border-color:#aaa"></div><span>True line</span></div>
+      <div class="leg"><div class="leg-line" style="background:#f97316"></div><span>Fitted line</span></div>
+      <div class="leg"><div class="leg-band" style="background:#f97316"></div><span>95% CI band</span></div>
+      <div class="leg"><div class="leg-dot" style="background:#f97316;border:1.5px solid #fb923c"></div><span>Simulated data</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="comparison">
+  <div class="metric">
+    <div class="metric-title">Sxx = Σ(xᵢ − x̄)² — leverage</div>
+    <div class="metric-row"><div class="metric-dot dot-A"></div><span>Design A</span><span class="metric-val" id="sxx-A">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-sxx-A" style="background:#3b82f6"></div></div></div>
+    <div class="metric-row"><div class="metric-dot dot-B"></div><span>Design B</span><span class="metric-val" id="sxx-B">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-sxx-B" style="background:#f97316"></div></div></div>
+    <div class="ratio-tag">Ratio A/B = <strong id="ratio-sxx">—</strong> &nbsp;(A always ≥ B)</div>
+  </div>
+  <div class="metric">
+    <div class="metric-title">SE(â) = σ / √Sxx — slope uncertainty</div>
+    <div class="metric-row"><div class="metric-dot dot-A"></div><span>Design A</span><span class="metric-val" id="se-A">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-se-A" style="background:#3b82f6"></div></div></div>
+    <div class="metric-row"><div class="metric-dot dot-B"></div><span>Design B</span><span class="metric-val" id="se-B">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-se-B" style="background:#f97316"></div></div></div>
+    <div class="ratio-tag">Design A is <strong id="ratio-se">—</strong> more precise</div>
+  </div>
+  <div class="metric">
+    <div class="metric-title">95% CI width on slope â</div>
+    <div class="metric-row"><div class="metric-dot dot-A"></div><span>Design A</span><span class="metric-val" id="ci-A">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-ci-A" style="background:#3b82f6"></div></div></div>
+    <div class="metric-row"><div class="metric-dot dot-B"></div><span>Design B</span><span class="metric-val" id="ci-B">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-ci-B" style="background:#f97316"></div></div></div>
+    <div class="ratio-tag">A saves <strong id="ratio-ci">—</strong> of CI width</div>
+  </div>
+  <div class="metric">
+    <div class="metric-title">Power — detect slope a ≠ 0</div>
+    <div class="metric-row"><div class="metric-dot dot-A"></div><span>Design A</span><span class="metric-val" id="pw-A">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-pw-A" style="background:#3b82f6"></div></div></div>
+    <div class="metric-row"><div class="metric-dot dot-B"></div><span>Design B</span><span class="metric-val" id="pw-B">—</span><div class="metric-bar-track"><div class="metric-bar-fill" id="bar-pw-B" style="background:#f97316"></div></div></div>
+    <div class="ratio-tag" id="pw-note">Power at true slope a</div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   STATISTICS
+   ===================================================================== */
+
+function lgamma(z) {
+  const g = 7;
+  const c = [0.99999999999980993,676.5203681218851,-1259.1392167224028,
+    771.32342877765313,-176.61502916214059,12.507343278686905,
+    -0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  if (z < 0.5) return Math.log(Math.PI/Math.sin(Math.PI*z)) - lgamma(1-z);
+  z -= 1;
+  let x = c[0];
+  for (let i = 1; i < g+2; i++) x += c[i]/(z+i);
+  const t = z + g + 0.5;
+  return 0.5*Math.log(2*Math.PI) + (z+0.5)*Math.log(t) - t + Math.log(x);
+}
+
+function betaInc(x, a, b) {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  if (x > (a+1)/(a+b+2)) return 1 - betaInc(1-x, b, a);
+  const lbeta = lgamma(a)+lgamma(b)-lgamma(a+b);
+  const front = Math.exp(a*Math.log(x)+b*Math.log(1-x)-lbeta)/a;
+  const eps = 1e-10, fpmin = 1e-30;
+  let cc = 1, dd = 1-(a+b)*x/(a+1);
+  if (Math.abs(dd)<fpmin) dd=fpmin;
+  dd=1/dd; let h=dd;
+  for (let m=1; m<=200; m++) {
+    const m2=2*m;
+    let aa=m*(b-m)*x/((a+m2-1)*(a+m2));
+    dd=1+aa*dd; if(Math.abs(dd)<fpmin)dd=fpmin;
+    cc=1+aa/cc; if(Math.abs(cc)<fpmin)cc=fpmin;
+    dd=1/dd; h*=dd*cc;
+    aa=-(a+m)*(a+b+m)*x/((a+m2)*(a+m2+1));
+    dd=1+aa*dd; if(Math.abs(dd)<fpmin)dd=fpmin;
+    cc=1+aa/cc; if(Math.abs(cc)<fpmin)cc=fpmin;
+    dd=1/dd; const delta=dd*cc; h*=delta;
+    if(Math.abs(delta-1)<eps) break;
+  }
+  return front*h;
+}
+
+function tCDF(t, df) {
+  const x = df/(df+t*t);
+  const b = betaInc(x, df/2, 0.5);
+  return t >= 0 ? 1-b/2 : b/2;
+}
+
+function normalCDF(x) {
+  const t = 1/(1+0.2316419*Math.abs(x));
+  const d = 0.3989422820*Math.exp(-x*x/2);
+  const p = 1-d*t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429))));
+  return x >= 0 ? p : 1-p;
+}
+
+function normalQuantile(p) {
+  if (p <= 0) return -1e10;
+  if (p >= 1) return  1e10;
+  const c = [2.515517,0.802853,0.010328];
+  const d = [1.432788,0.189269,0.001308];
+  const q = p-0.5;
+  if (Math.abs(q) < 0.42) {
+    const r=q*q;
+    return q*(((0.010328*r+0.802853)*r+2.515517)/((((0.001308*r+0.189269)*r+1.432788)*r+1)));
+  }
+  const r=p<0.5?Math.sqrt(-2*Math.log(p)):Math.sqrt(-2*Math.log(1-p));
+  const cc=[0.3374754822726147,0.9761690190917186,0.1607979714918209,0.0276438810333863,
+            0.0038405729373609,0.0003951896511349,0.0000321767881768,0.0000002888167364,0.0000003960315187];
+  let x=cc[0]; for(let i=1;i<9;i++) x=x*r+cc[i]*Math.pow(r,i);
+  // Wait, let me fix this approximation
+  // Use Beasley-Springer-Moro
+  x = cc[0]+r*(cc[1]+r*(cc[2]+r*(cc[3]+r*(cc[4]+r*(cc[5]+r*(cc[6]+r*(cc[7]+r*cc[8])))))));
+  return p<0.5 ? -x : x;
+}
+
+function tQuantile(p, df) {
+  if (df <= 0) return normalQuantile(p);
+  let t = normalQuantile(p);
+  for (let i=0; i<50; i++) {
+    const f = tCDF(t,df) - p;
+    const lpdf = lgamma((df+1)/2) - lgamma(df/2) - 0.5*Math.log(Math.PI*df)
+               - (df+1)/2*Math.log(1+t*t/df);
+    const pdf = Math.exp(lpdf);
+    if (pdf < 1e-15) break;
+    t -= f/pdf;
+    if (Math.abs(f) < 1e-10) break;
+  }
+  return t;
+}
+
+// Power of two-sided t-test H0: a=0 using normal approx to non-central t
+function computePower(slope, Sxx, sigma, alpha, n) {
+  if (n <= 2 || Sxx < 1e-12) return alpha;
+  const df = n-2;
+  const ncp = Math.abs(slope)*Math.sqrt(Sxx)/sigma;
+  const tcrit = tQuantile(1-alpha/2, df);
+  // Normal approximation: power ≈ Φ(ncp - tcrit) + Φ(-ncp - tcrit)
+  return normalCDF(ncp-tcrit) + normalCDF(-ncp-tcrit);
+}
+
+/* =====================================================================
+   DESIGN
+   ===================================================================== */
+
+function makeDesign(type, n, xmin, xmax) {
+  const xmid = (xmin+xmax)/2;
+  if (type === 'A') {
+    const nL=Math.floor(n/2), nR=n-nL;
+    return [...Array(nL).fill(xmin), ...Array(nR).fill(xmax)];
+  } else { // B: 3 levels
+    const n1=Math.floor(n/3), n2=Math.floor(n/3), n3=n-n1-n2;
+    return [...Array(n1).fill(xmin), ...Array(n2).fill(xmid), ...Array(n3).fill(xmax)];
+  }
+}
+
+function designStats(xs) {
+  const n=xs.length;
+  const xbar=xs.reduce((s,x)=>s+x,0)/n;
+  const Sxx=xs.reduce((s,x)=>s+(x-xbar)**2,0);
+  return { n, xbar, Sxx };
+}
+
+function linReg(xs, ys) {
+  const { n, xbar, Sxx } = designStats(xs);
+  const ybar=ys.reduce((s,y)=>s+y,0)/n;
+  const Sxy=xs.reduce((s,x,i)=>s+(x-xbar)*(ys[i]-ybar),0);
+  const a=Sxx>1e-12?Sxy/Sxx:0;
+  const b=ybar-a*xbar;
+  return { a, b };
+}
+
+/* =====================================================================
+   RANDOM
+   ===================================================================== */
+
+let rng = mulberry32(42);
+function mulberry32(s) {
+  return function() {
+    s=s+0x6D2B79F5|0;
+    let t=Math.imul(s^s>>>15,1|s);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function gauss() {
+  const u=rng(),v=rng();
+  return Math.sqrt(-2*Math.log(u+1e-10))*Math.cos(2*Math.PI*v);
+}
+function reseed() { rng=mulberry32(Date.now()&0xFFFFFF); }
+
+function simulate(xs, trueA, trueB, sigma) {
+  return xs.map(x => trueA*x + trueB + sigma*gauss());
+}
+
+/* =====================================================================
+   RENDERING
+   ===================================================================== */
+
+function drawPlot(canvasId, design, trueA, trueB, sigma, alpha, color) {
+  const canvas = document.getElementById(canvasId);
+  const rect   = canvas.getBoundingClientRect();
+  if (rect.width === 0) return;
+  const dpr = window.devicePixelRatio||1;
+  canvas.width  = rect.width*dpr;
+  canvas.height = rect.height*dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const W=rect.width, H=rect.height;
+
+  const { xs, ys, fit } = design;
+  const { n, xbar, Sxx } = designStats(xs);
+  const df = n-2;
+  const tcrit = tQuantile(1-alpha/2, Math.max(df,1));
+  const seSlope = sigma/Math.sqrt(Math.max(Sxx,1e-12));
+
+  // ── viewport ──
+  const xmin=xs.reduce((a,b)=>Math.min(a,b));
+  const xmax=xs.reduce((a,b)=>Math.max(a,b));
+  const xSpan = xmax-xmin;
+  const xRange = [xmin - 0.08*xSpan, xmax + 0.18*xSpan]; // extra room for CI width label
+
+  // Y bounds from confidence band extremes + data
+  const bandHalfMax = tcrit*sigma*Math.sqrt(1/n + (xSpan/2)**2/Math.max(Sxx,1e-12));
+  const yCenter = trueA*((xRange[0]+xRange[1])/2)+trueB;
+  const allY = [...ys, yCenter+bandHalfMax*1.5, yCenter-bandHalfMax*1.5,
+    trueA*xRange[0]+trueB, trueA*xRange[1]+trueB];
+  const ymin=Math.min(...allY), ymax=Math.max(...allY);
+  const yPad=(ymax-ymin)*0.12;
+  const yRange=[ymin-yPad, ymax+yPad];
+
+  const pad={l:50,r:20,t:14,b:46};
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+
+  function sx(x){ return pad.l+(x-xRange[0])/(xRange[1]-xRange[0])*pw; }
+  function sy(y){ return pad.t+(1-(y-yRange[0])/(yRange[1]-yRange[0]))*ph; }
+
+  // Background
+  ctx.fillStyle='#0b0d14';
+  ctx.fillRect(0,0,W,H);
+
+  // Grid
+  ctx.strokeStyle='#1a1d26'; ctx.lineWidth=1;
+  for(let i=0;i<=6;i++){
+    const yv=yRange[0]+i*(yRange[1]-yRange[0])/6;
+    ctx.beginPath(); ctx.moveTo(pad.l,sy(yv)); ctx.lineTo(pad.l+pw,sy(yv)); ctx.stroke();
+  }
+  for(let i=0;i<=5;i++){
+    const xv=xRange[0]+i*(xRange[1]-xRange[0])/5;
+    ctx.beginPath(); ctx.moveTo(sx(xv),pad.t); ctx.lineTo(sx(xv),pad.t+ph); ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle='#2a2d3e'; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(pad.l,pad.t); ctx.lineTo(pad.l,pad.t+ph);
+  ctx.lineTo(pad.l+pw,pad.t+ph); ctx.stroke();
+
+  // Axis labels
+  ctx.fillStyle='#4a5060'; ctx.font='11px monospace'; ctx.textAlign='right';
+  for(let i=0;i<=6;i++){
+    const yv=yRange[0]+i*(yRange[1]-yRange[0])/6;
+    ctx.fillText(yv.toFixed(1), pad.l-5, sy(yv)+4);
+  }
+  ctx.textAlign='center';
+  for(let i=0;i<=5;i++){
+    const xv=xRange[0]+i*(xRange[1]-xRange[0])/5;
+    ctx.fillText(xv.toFixed(1), sx(xv), pad.t+ph+14);
+  }
+  ctx.fillStyle='#5a6070'; ctx.font='11px sans-serif';
+  ctx.fillText('x', pad.l+pw/2, H-4);
+  ctx.save(); ctx.translate(12,pad.t+ph/2); ctx.rotate(-Math.PI/2); ctx.fillText('y',0,0); ctx.restore();
+
+  // ── Confidence band (analytical, σ known, centered on true line) ──
+  const nGrid=300;
+  const upper=[], lower=[];
+  for(let i=0;i<=nGrid;i++){
+    const x=xRange[0]+i*(xRange[1]-xRange[0])/nGrid;
+    const yTrue=trueA*x+trueB;
+    const half=tcrit*sigma*Math.sqrt(1/n+(x-xbar)**2/Math.max(Sxx,1e-12));
+    upper.push([sx(x), sy(yTrue+half)]);
+    lower.push([sx(x), sy(yTrue-half)]);
+  }
+  ctx.beginPath();
+  ctx.moveTo(...upper[0]);
+  upper.forEach(p=>ctx.lineTo(...p));
+  [...lower].reverse().forEach(p=>ctx.lineTo(...p));
+  ctx.closePath();
+  ctx.fillStyle=color+'28';
+  ctx.fill();
+
+  // Band boundaries
+  ctx.strokeStyle=color+'55'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(...upper[0]); upper.slice(1).forEach(p=>ctx.lineTo(...p)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(...lower[0]); lower.slice(1).forEach(p=>ctx.lineTo(...p)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // ── True line ──
+  ctx.strokeStyle='#88888888'; ctx.lineWidth=1.5; ctx.setLineDash([6,4]);
+  ctx.beginPath();
+  ctx.moveTo(sx(xRange[0]),sy(trueA*xRange[0]+trueB));
+  ctx.lineTo(sx(xRange[1]),sy(trueA*xRange[1]+trueB));
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // ── Fitted line ──
+  ctx.strokeStyle=color; ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(sx(xRange[0]),sy(fit.a*xRange[0]+fit.b));
+  ctx.lineTo(sx(xRange[1]),sy(fit.a*xRange[1]+fit.b));
+  ctx.stroke();
+
+  // ── Data points (jitter multiple points at same x) ──
+  // Group by x to apply jitter
+  const xGroups = {};
+  xs.forEach((x,i)=>{ const k=x.toFixed(6); if(!xGroups[k]) xGroups[k]=[]; xGroups[k].push(i); });
+  const jitterAmt = pw*0.018;
+
+  Object.values(xGroups).forEach(group=>{
+    const offsets=group.map((_,k)=>(k-(group.length-1)/2)*jitterAmt);
+    group.forEach((idx,k)=>{
+      const x=xs[idx], y=ys[idx];
+      const cx=sx(x)+offsets[k], cy=sy(y);
+      ctx.beginPath(); ctx.arc(cx,cy,4,0,2*Math.PI);
+      ctx.fillStyle=color+'44'; ctx.fill();
+      ctx.strokeStyle=color+'cc'; ctx.lineWidth=1.5; ctx.stroke();
+    });
+  });
+
+  // ── Design rug (x positions at bottom) ──
+  const rugY = pad.t+ph+26;
+  Object.entries(xGroups).forEach(([xk,group])=>{
+    const x=parseFloat(xk);
+    ctx.strokeStyle=color+'bb'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(sx(x),pad.t+ph+18); ctx.lineTo(sx(x),pad.t+ph+32); ctx.stroke();
+    ctx.fillStyle=color+'aa'; ctx.font='9px monospace'; ctx.textAlign='center';
+    ctx.fillText(`n=${group.length}`, sx(x), rugY+10);
+  });
+
+  // ── CI width indicator on the right ──
+  const xCI = xRange[0]+0.93*(xRange[1]-xRange[0]);
+  const yCI = trueA*xCI+trueB;
+  const halfCI = tcrit*sigma*Math.sqrt(1/n+(xCI-xbar)**2/Math.max(Sxx,1e-12));
+  ctx.strokeStyle=color+'cc'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(sx(xCI)-4,sy(yCI+halfCI)); ctx.lineTo(sx(xCI)+4,sy(yCI+halfCI)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx(xCI)-4,sy(yCI-halfCI)); ctx.lineTo(sx(xCI)+4,sy(yCI-halfCI)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx(xCI),sy(yCI+halfCI)); ctx.lineTo(sx(xCI),sy(yCI-halfCI)); ctx.stroke();
+
+  // CI width label
+  const ciW=(2*halfCI/(yRange[1]-yRange[0])*ph);
+  ctx.fillStyle=color; ctx.font='bold 10px monospace'; ctx.textAlign='left';
+  ctx.fillText(`CI=(${(2*halfCI).toFixed(2)})`, sx(xCI)+7, sy(yCI)+4);
+
+  // ── Slope annotation ──
+  ctx.fillStyle='#aaa'; ctx.font='10px monospace'; ctx.textAlign='left';
+  ctx.fillText(`â=${fit.a.toFixed(3)}  (true=${trueA.toFixed(1)})`, pad.l+4, pad.t+13);
+}
+
+/* =====================================================================
+   UPDATE
+   ===================================================================== */
+
+let simDataA, simDataB;
+
+function update() {
+  const n     = parseInt(document.getElementById('sl-n').value);
+  const sigma = parseFloat(document.getElementById('sl-sigma').value);
+  const slope = parseFloat(document.getElementById('sl-slope').value);
+  const R     = parseFloat(document.getElementById('sl-range').value);
+  const alpha = parseFloat(document.getElementById('sl-alpha').value);
+  const b0    = 0; // intercept fixed at 0 for simplicity
+
+  const xmin=0, xmax=R;
+  const xsA=makeDesign('A',n,xmin,xmax);
+  const xsB=makeDesign('B',n,xmin,xmax);
+
+  // Descriptions
+  const nA1=xsA.filter(x=>x===xmin).length, nA2=xsA.filter(x=>x===xmax).length;
+  const nB1=xsB.filter(x=>x===xmin).length, nB2=xsB.filter(x=>Math.abs(x-(xmin+xmax)/2)<1e-6).length, nB3=n-nB1-nB2;
+  document.getElementById('desc-A').textContent=`${nA1} at x=0, ${nA2} at x=${R}`;
+  document.getElementById('desc-B').textContent=`${nB1} at x=0, ${nB2} at x=${R/2}, ${nB3} at x=${R}`;
+
+  // Simulate data (reuse stored noise if sliders move, new on reseed)
+  const ysA=simulate(xsA,slope,b0,sigma);
+  const ysB=simulate(xsB,slope,b0,sigma);
+
+  const fitA=linReg(xsA,ysA);
+  const fitB=linReg(xsB,ysB);
+
+  // Draw
+  drawPlot('canvasA', {xs:xsA,ys:ysA,fit:fitA}, slope,b0,sigma,alpha,'#3b82f6');
+  drawPlot('canvasB', {xs:xsB,ys:ysB,fit:fitB}, slope,b0,sigma,alpha,'#f97316');
+
+  // ── Comparison stats ──
+  const stA=designStats(xsA), stB=designStats(xsB);
+  const df=n-2;
+  const tcrit=tQuantile(1-alpha/2,Math.max(df,1));
+  const seA=sigma/Math.sqrt(Math.max(stA.Sxx,1e-12));
+  const seB=sigma/Math.sqrt(Math.max(stB.Sxx,1e-12));
+  const ciWA=2*tcrit*seA, ciWB=2*tcrit*seB;
+  const pwA=computePower(slope,stA.Sxx,sigma,alpha,n);
+  const pwB=computePower(slope,stB.Sxx,sigma,alpha,n);
+
+  document.getElementById('sxx-A').textContent=stA.Sxx.toFixed(2);
+  document.getElementById('sxx-B').textContent=stB.Sxx.toFixed(2);
+  const maxSxx=Math.max(stA.Sxx,stB.Sxx);
+  document.getElementById('bar-sxx-A').style.width=(stA.Sxx/maxSxx*100)+'%';
+  document.getElementById('bar-sxx-B').style.width=(stB.Sxx/maxSxx*100)+'%';
+  document.getElementById('ratio-sxx').textContent=(stA.Sxx/Math.max(stB.Sxx,1e-12)).toFixed(3);
+
+  document.getElementById('se-A').textContent=seA.toFixed(4);
+  document.getElementById('se-B').textContent=seB.toFixed(4);
+  const maxSE=Math.max(seA,seB);
+  document.getElementById('bar-se-A').style.width=(seA/maxSE*100)+'%';
+  document.getElementById('bar-se-B').style.width=(seB/maxSE*100)+'%';
+  document.getElementById('ratio-se').textContent=((1-seA/seB)*100).toFixed(1)+'%';
+
+  document.getElementById('ci-A').textContent=ciWA.toFixed(4);
+  document.getElementById('ci-B').textContent=ciWB.toFixed(4);
+  const maxCI=Math.max(ciWA,ciWB);
+  document.getElementById('bar-ci-A').style.width=(ciWA/maxCI*100)+'%';
+  document.getElementById('bar-ci-B').style.width=(ciWB/maxCI*100)+'%';
+  document.getElementById('ratio-ci').textContent=((1-ciWA/ciWB)*100).toFixed(1)+'%';
+
+  document.getElementById('pw-A').textContent=(pwA*100).toFixed(1)+'%';
+  document.getElementById('pw-B').textContent=(pwB*100).toFixed(1)+'%';
+  document.getElementById('bar-pw-A').style.width=(pwA*100)+'%';
+  document.getElementById('bar-pw-B').style.width=(pwB*100)+'%';
+  document.getElementById('pw-note').textContent=`NCP_A=${(Math.abs(slope)*Math.sqrt(stA.Sxx)/sigma).toFixed(2)}, NCP_B=${(Math.abs(slope)*Math.sqrt(stB.Sxx)/sigma).toFixed(2)}`;
+}
+
+/* =====================================================================
+   CONTROLS
+   ===================================================================== */
+
+function bindSlider(id, lblId, fmt) {
+  const el  = document.getElementById(id);
+  const lbl = document.getElementById(lblId);
+  lbl.textContent = fmt(parseFloat(el.value));
+  el.addEventListener('input', ()=>{ lbl.textContent=fmt(parseFloat(el.value)); update(); });
+}
+
+bindSlider('sl-n',     'lbl-n',     v=>Math.round(v));
+bindSlider('sl-sigma', 'lbl-sigma', v=>v.toFixed(1));
+bindSlider('sl-slope', 'lbl-slope', v=>v.toFixed(1));
+bindSlider('sl-range', 'lbl-range', v=>v.toFixed(1));
+bindSlider('sl-alpha', 'lbl-alpha', v=>v.toFixed(2));
+
+document.getElementById('btn-reseed').addEventListener('click', ()=>{ reseed(); update(); });
+
+window.addEventListener('resize', update);
+
+update();
+</script>
+</body>
+</html>
