@@ -1250,7 +1250,8 @@ function analyzeVessel(vessel, regrModel, densReg, params) {
 
   return {
     vessel, sigma1_crit, rhoB_crit, H, B_crit, B_ratio, B_status,
-    sigma_janssen, sigma1_actif, flowState, ff, SF
+    sigma_janssen, sigma1_actif, flowState, ff, SF,
+    _regModel: regrModel
   };
 }
 
@@ -1421,7 +1422,216 @@ function renderResults() {
         </div>
       </div>
     `;
-    container.appendChild(div);
+    // Regime map canvas
+    const mapDiv = document.createElement('div');
+    mapDiv.className = 'panel';
+    mapDiv.style.marginTop = '10px';
+    mapDiv.innerHTML = `<h3 style="margin-bottom:8px;color:#a0b4cc;font-size:12px;text-transform:uppercase;letter-spacing:.4px">Carte de régime d'écoulement — ${escHtml(r.vessel.name)}</h3>
+      <div class="chart-wrap"><canvas id="regime-${r.vessel.name.replace(/\s/g,'_')}" width="560" height="320"></canvas></div>
+      <div style="margin-top:6px;font-size:11px;color:#667;line-height:1.6">
+        Zones colorées : classification Jenike par FFC. La courbe en pointillé représente la limite de voutage pour cette trémie (B_crit = B_actual). Points expérimentaux : chaque mesure (σ₁/fc, ρ_b).
+      </div>`;
+    container.appendChild(mapDiv);
+
+    // draw after DOM insertion
+    setTimeout(() => drawRegimeMap(r, `regime-${r.vessel.name.replace(/\s/g,'_')}`), 0);
+  });
+}
+
+function drawRegimeMap(res, canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const margin = {left:65, right:120, top:20, bottom:40};
+  const W = canvas.width - margin.left - margin.right;
+  const H = canvas.height - margin.top - margin.bottom;
+
+  // Get experimental data points (FFC, rhoB) for active batch
+  const batch = batches[activeBatch];
+  const rawData = getValidData(batch).filter(d => d.fc > 0 && d.rhoB > 0);
+  const pts = rawData.map(d => ({ffc: d.sigma1/d.fc, rhoB: d.rhoB, sigma1: d.sigma1}));
+
+  // Axis ranges
+  const ffcMax = pts.length ? Math.max(15, ...pts.map(p=>p.ffc)) * 1.1 : 15;
+  const ffcMin = 0;
+  const rhoAll = pts.map(p=>p.rhoB);
+  const rhoMin = rhoAll.length ? Math.max(0, Math.min(...rhoAll)*0.85) : 400;
+  const rhoMax = rhoAll.length ? Math.max(...rhoAll)*1.15 : 800;
+
+  // Background
+  ctx.fillStyle = '#0a0d14';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Jenike zone fills (FFC bands, horizontal strips would be confusing — use vertical bands)
+  const zones = [
+    {xFrom:0,   xTo:1,   color:'rgba(200,50,50,0.22)',  label:'Non\ncoulant'},
+    {xFrom:1,   xTo:2,   color:'rgba(220,110,40,0.20)', label:'Très\ncohésif'},
+    {xFrom:2,   xTo:4,   color:'rgba(210,180,40,0.18)', label:'Cohésif'},
+    {xFrom:4,   xTo:10,  color:'rgba(80,180,80,0.15)',  label:'Facile'},
+    {xFrom:10,  xTo:ffcMax, color:'rgba(60,140,220,0.13)', label:'Libre'},
+  ];
+
+  const toC = (ffc, rho) => {
+    const cx = margin.left + (ffc-ffcMin)/(ffcMax-ffcMin)*W;
+    const cy = margin.top + (rhoMax-rho)/(rhoMax-rhoMin)*H;
+    return {cx, cy};
+  };
+
+  zones.forEach(z => {
+    const x0 = margin.left + (z.xFrom-ffcMin)/(ffcMax-ffcMin)*W;
+    const x1 = margin.left + (Math.min(z.xTo,ffcMax)-ffcMin)/(ffcMax-ffcMin)*W;
+    if (x1 <= x0) return;
+    ctx.fillStyle = z.color;
+    ctx.fillRect(x0, margin.top, x1-x0, H);
+    // Zone label at top
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.font = '9px Segoe UI,Arial';
+    ctx.textAlign = 'center';
+    const lines = z.label.split('\n');
+    lines.forEach((line, li) => ctx.fillText(line, (x0+x1)/2, margin.top+10+li*11));
+  });
+
+  // Grid lines
+  ctx.strokeStyle = '#1e2235';
+  ctx.lineWidth = 0.5;
+  for (let i=0;i<=5;i++) {
+    const x = margin.left + i*W/5;
+    ctx.beginPath(); ctx.moveTo(x,margin.top); ctx.lineTo(x,margin.top+H); ctx.stroke();
+    const y = margin.top + i*H/5;
+    ctx.beginPath(); ctx.moveTo(margin.left,y); ctx.lineTo(margin.left+W,y); ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle = '#3a4a5a';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(margin.left, margin.top);
+  ctx.lineTo(margin.left, margin.top+H);
+  ctx.lineTo(margin.left+W, margin.top+H);
+  ctx.stroke();
+
+  // X ticks & labels
+  ctx.fillStyle = '#8899aa'; ctx.font='10px Segoe UI,Arial'; ctx.textAlign='center';
+  for (let i=0;i<=5;i++) {
+    const val = ffcMin + i*(ffcMax-ffcMin)/5;
+    const x = margin.left + i*W/5;
+    ctx.fillText(val.toFixed(1), x, margin.top+H+14);
+  }
+  // Y ticks & labels
+  ctx.textAlign='right';
+  for (let i=0;i<=5;i++) {
+    const val = rhoMin + (5-i)*(rhoMax-rhoMin)/5;
+    const y = margin.top + i*H/5;
+    ctx.fillText(val.toFixed(0), margin.left-5, y+4);
+  }
+  // Axis labels
+  ctx.fillStyle='#aabbcc'; ctx.font='11px Segoe UI,Arial'; ctx.textAlign='center';
+  ctx.fillText('FFC = σ₁/fc', margin.left+W/2, canvas.height-6);
+  ctx.save(); ctx.translate(12, margin.top+H/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('ρ_b (kg/m³)', 0, 0); ctx.restore();
+
+  // Vessel arching boundary curve
+  // For each rhoB, σ1_crit_vessel = B_actual(cm)/100 * rhoB * 9.81 / H_factor
+  // then FFC_limit = σ1_crit_vessel / fc(σ1_crit_vessel)
+  const amModel = res._regModel || regrResult;
+  const H_factor = res.H;
+  const B_cm = res.vessel.B; // cm
+
+  if (amModel && H_factor > 0 && B_cm > 0) {
+    const N = 200;
+    ctx.strokeStyle = '#f0a030';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 3]);
+    ctx.beginPath();
+    let first = true;
+    for (let i=0; i<=N; i++) {
+      const rho = rhoMin + (rhoMax-rhoMin)*i/N;
+      if (rho <= 0) continue;
+      // B_crit(cm) = H * σ1 * 100 / (ρ * 9.81)  →  σ1 = B_cm * ρ * 9.81 / (H * 100)
+      const sigma1v = B_cm * rho * 9.81 / (H_factor * 100); // Pa
+      if (sigma1v <= 0) continue;
+      const fc_v = evalModel(amModel, sigma1v);
+      if (!fc_v || fc_v <= 0 || isNaN(fc_v)) continue;
+      const ffc_limit = sigma1v / fc_v;
+      if (ffc_limit < ffcMin || ffc_limit > ffcMax*1.5) { first=true; continue; }
+      const p = toC(Math.min(ffc_limit, ffcMax), rho);
+      if (p.cy < margin.top-2 || p.cy > margin.top+H+2) { first=true; continue; }
+      if (first) { ctx.moveTo(p.cx, p.cy); first=false; } else ctx.lineTo(p.cx, p.cy);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Label the boundary
+    const rhoMid = (rhoMin+rhoMax)/2;
+    const sigma1mid = B_cm * rhoMid * 9.81 / (H_factor * 100);
+    const fc_mid = evalModel(amModel, sigma1mid);
+    if (fc_mid && fc_mid > 0) {
+      const ffc_mid = Math.min(sigma1mid / fc_mid, ffcMax - 0.5);
+      const pm = toC(ffc_mid, rhoMid);
+      ctx.fillStyle = '#f0a030';
+      ctx.font = 'bold 10px Segoe UI,Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('Limite voûtage', pm.cx+4, pm.cy-4);
+      ctx.font = '9px Segoe UI,Arial';
+      ctx.fillText(res.vessel.name, pm.cx+4, pm.cy+8);
+    }
+  }
+
+  // σ1_actif horizontal line as ρ_b (using actual sigma1_actif from result)
+  // Show vertical line at FFC corresponding to σ1_actif
+  if (res.sigma1_actif && amModel) {
+    const fc_actif = evalModel(amModel, res.sigma1_actif);
+    if (fc_actif && fc_actif > 0) {
+      const ffc_actif = res.sigma1_actif / fc_actif;
+      if (ffc_actif >= ffcMin && ffc_actif <= ffcMax) {
+        const x_actif = margin.left + (ffc_actif-ffcMin)/(ffcMax-ffcMin)*W;
+        ctx.strokeStyle = 'rgba(120,160,255,0.5)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3,3]);
+        ctx.beginPath(); ctx.moveTo(x_actif, margin.top); ctx.lineTo(x_actif, margin.top+H); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(120,160,255,0.8)';
+        ctx.font = '9px Segoe UI,Arial'; ctx.textAlign = 'center';
+        ctx.fillText('σ₁_actif', x_actif, margin.top+H+28);
+      }
+    }
+  }
+
+  // Experimental data points
+  const colors = ['#7eb8f7','#f97316','#10b981','#f59e0b','#a78bfa'];
+  pts.forEach((p, pi) => {
+    const pp = toC(Math.min(p.ffc, ffcMax-0.05), p.rhoB);
+    if (pp.cy < margin.top || pp.cy > margin.top+H) return;
+    const col = colors[pi % colors.length];
+    ctx.fillStyle = col;
+    ctx.strokeStyle = '#0a0d14';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(pp.cx, pp.cy, 5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  });
+
+  // Legend (right side)
+  const legendX = margin.left + W + 8;
+  const legendItems = [
+    {color:'#f0a030', dash:true,  label:'Limite voûtage'},
+    {color:'rgba(120,160,255,0.8)', dash:true, label:'FFC σ₁ actif'},
+    {color:'#7eb8f7', dash:false, label:'Points exp.'},
+  ];
+  ctx.font = '10px Segoe UI,Arial';
+  ctx.textAlign = 'left';
+  legendItems.forEach((item, li) => {
+    const ly = margin.top + 20 + li*20;
+    ctx.strokeStyle = item.color;
+    ctx.lineWidth = item.dash ? 1.5 : 0;
+    if (item.dash) {
+      ctx.setLineDash([5,3]);
+      ctx.beginPath(); ctx.moveTo(legendX, ly); ctx.lineTo(legendX+22, ly); ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      ctx.fillStyle = item.color;
+      ctx.beginPath(); ctx.arc(legendX+11, ly, 4, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.fillStyle = '#8899aa';
+    ctx.fillText(item.label, legendX+26, ly+4);
   });
 }
 
