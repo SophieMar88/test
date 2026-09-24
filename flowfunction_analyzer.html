@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlowFunction Analyzer — Poudres Pharmaceutiques</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f1117;color:#e0e0e0;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;min-height:100vh}
+h1{font-size:18px;font-weight:600;color:#7eb8f7;padding:14px 20px 0;letter-spacing:.3px}
+h2{font-size:13px;font-weight:600;color:#a0b4cc;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+h3{font-size:12px;font-weight:600;color:#8899aa;margin-bottom:6px}
+.subtitle{font-size:11px;color:#667;padding:2px 20px 12px}
+/* Tabs */
+.tab-bar{display:flex;gap:2px;padding:10px 20px 0;border-bottom:1px solid #2a2d3e}
+.tab-btn{padding:8px 18px;background:#1a1d2e;border:1px solid #2a2d3e;border-bottom:none;border-radius:6px 6px 0 0;cursor:pointer;color:#8899aa;font-size:12px;font-weight:500;transition:all .15s}
+.tab-btn:hover{background:#22263a;color:#b0c4de}
+.tab-btn.active{background:#0f1117;color:#7eb8f7;border-color:#3a4d6e}
+.tab-content{display:none;padding:18px 20px}
+.tab-content.active{display:block}
+/* Panels */
+.panel{background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:14px;margin-bottom:14px}
+.panel-row{display:flex;gap:14px;margin-bottom:14px}
+.panel-row .panel{flex:1;margin-bottom:0}
+/* Form elements */
+label{display:block;font-size:11px;color:#8899aa;margin-bottom:3px}
+input[type=text],input[type=number],select{background:#0f1117;border:1px solid #2a2d3e;border-radius:4px;color:#e0e0e0;padding:5px 8px;font-size:12px;width:100%;transition:border-color .15s}
+input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:#3a6ea5}
+input[type=radio]{accent-color:#3a6ea5}
+.form-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px}
+.form-group{display:flex;flex-direction:column;min-width:100px}
+.form-group.wide{min-width:160px;flex:1}
+/* Buttons */
+button{background:#1e3a5f;border:1px solid #2a5a8f;border-radius:4px;color:#7eb8f7;padding:5px 12px;font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap}
+button:hover{background:#245070;border-color:#4a8abf}
+button.danger{background:#3d1a1a;border-color:#7a2828;color:#f08080}
+button.danger:hover{background:#5a2020}
+button.success{background:#1a3d2e;border-color:#2a7a4e;color:#80f0b0}
+button.success:hover{background:#1e5038}
+button.primary{background:#1a3d1a;border-color:#2a6a2a;color:#80d080}
+button.primary:hover{background:#205020}
+/* Tables */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#12151f;color:#7a8a9a;padding:6px 8px;text-align:left;border-bottom:1px solid #2a2d3e;font-weight:500;white-space:nowrap}
+td{padding:5px 8px;border-bottom:1px solid #1e2130;vertical-align:middle}
+tr:hover td{background:#1e2235}
+tr:nth-child(even) td{background:#161825}
+tr:nth-child(even):hover td{background:#1e2235}
+td input{padding:3px 5px;font-size:11px;background:#0a0d14;border-color:#1e2130}
+td input:focus{border-color:#3a6ea5}
+/* Batch tabs */
+.batch-tabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.batch-tab{padding:4px 12px;background:#0f1117;border:1px solid #2a2d3e;border-radius:12px;cursor:pointer;font-size:11px;color:#8899aa;transition:all .15s}
+.batch-tab:hover{border-color:#3a6ea5;color:#7eb8f7}
+.batch-tab.active{background:#1a2a3a;border-color:#3a6ea5;color:#7eb8f7}
+/* Charts */
+.chart-wrap{position:relative;background:#0a0d14;border:1px solid #2a2d3e;border-radius:6px;padding:4px}
+canvas{display:block}
+/* Badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.badge-green{background:#0d2e1a;color:#4ddb90;border:1px solid #1a6038}
+.badge-yellow{background:#2e2300;color:#f0c040;border:1px solid #6e5000}
+.badge-red{background:#2e0d0d;color:#f07070;border:1px solid #7a2020}
+.badge-blue{background:#0d1e2e;color:#70b0f0;border:1px solid #1a4068}
+.badge-grey{background:#1a1d2e;color:#8899aa;border:1px solid #2a2d3e}
+/* Regression info */
+.reg-info{background:#0a0d14;border:1px solid #2a2d3e;border-radius:6px;padding:10px;font-family:monospace;font-size:11px;color:#b0c4de;line-height:1.8}
+.reg-info .eq{color:#80d0ff}
+.reg-info .val{color:#80f0b0}
+/* Results grid */
+.results-vessel{margin-bottom:14px}
+.results-vessel h3{font-size:13px;color:#7eb8f7;padding:8px 0 6px;border-bottom:1px solid #2a2d3e;margin-bottom:8px}
+.results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.result-card{background:#0a0d14;border:1px solid #2a2d3e;border-radius:6px;padding:10px}
+.result-card .label{font-size:10px;color:#667;margin-bottom:2px}
+.result-card .value{font-size:14px;font-weight:600;color:#e0e0e0}
+.result-card .sub{font-size:10px;color:#8899aa;margin-top:2px}
+/* Scrollable table wrapper */
+.table-scroll{overflow-x:auto}
+/* Import area */
+.import-area{font-size:11px;color:#8899aa;margin-top:4px}
+/* Separator */
+.sep{border-top:1px solid #2a2d3e;margin:12px 0}
+/* Error msg */
+.err{color:#f07070;font-size:11px;padding:4px 0}
+/* Status bar */
+.status-bar{position:fixed;bottom:0;left:0;right:0;background:#12151f;border-top:1px solid #2a2d3e;padding:4px 20px;font-size:11px;color:#556;z-index:100}
+</style>
+</head>
+<body>
+<h1>FlowFunction Analyzer</h1>
+<p class="subtitle">Analyse de l'écoulement des poudres pharmaceutiques — Méthode Jenike / Schulze</p>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('donnees')">Données</button>
+  <button class="tab-btn" onclick="switchTab('regression')">Régression</button>
+  <button class="tab-btn" onclick="switchTab('cuves')">Analyse / Cuves</button>
+  <button class="tab-btn" onclick="switchTab('resultats')">Résultats</button>
+</div>
+
+<!-- TAB 1: DONNÉES -->
+<div id="tab-donnees" class="tab-content active">
+  <div class="panel">
+    <h2>Lots (Batches)</h2>
+    <div class="form-row">
+      <div class="form-group wide"><label>Nom du lot</label><input type="text" id="batch-name" placeholder="Lot 1" oninput="updateBatchMeta()"></div>
+      <div class="form-group wide"><label>Code lot</label><input type="text" id="batch-code" placeholder="ABC-001" oninput="updateBatchMeta()"></div>
+      <div style="display:flex;align-items:flex-end;gap:6px">
+        <button onclick="addBatch()">+ Ajouter lot</button>
+        <button class="danger" onclick="removeBatch()">− Supprimer</button>
+      </div>
+    </div>
+    <div class="batch-tabs" id="batch-tabs"></div>
+  </div>
+
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h2>Données SpinTester</h2>
+      <div style="display:flex;gap:6px;align-items:center">
+        <label style="margin:0;cursor:pointer">
+          <input type="file" id="csv-import" accept=".csv,.txt" style="display:none" onchange="importCSV(event)">
+          <button onclick="document.getElementById('csv-import').click()">⬆ Import CSV</button>
+        </label>
+        <button onclick="addDataRow()">+ Ligne</button>
+        <button class="danger" onclick="clearData()">✕ Vider</button>
+      </div>
+    </div>
+    <p class="import-area">Format CSV attendu (entête) : sigma1,fc,rhoB,Hausner</p>
+    <div class="table-scroll">
+      <table id="data-table">
+        <thead><tr><th>#</th><th>σ₁ (Pa)</th><th>fc (Pa)</th><th>ρ_b (kg/m³)</th><th>Hausner</th><th></th></tr></thead>
+        <tbody id="data-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Point de référence densité au repos</h2>
+    <div class="form-row">
+      <div class="form-group"><label>σ_ref (Pa)</label><input type="number" id="sigma-ref" value="500" min="0"></div>
+      <div class="form-group"><label>ρ_b_ref (kg/m³)</label><input type="number" id="rho-ref" value="600" min="0"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: RÉGRESSION -->
+<div id="tab-regression" class="tab-content">
+  <div class="panel">
+    <h2>Paramètres de régression</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Modèle (FFC)</label>
+        <select id="reg-model" onchange="runRegression()">
+          <option value="linear">Linéaire</option>
+          <option value="power">Puissance</option>
+          <option value="log">Logarithmique</option>
+          <option value="mehos">Quadratique (Mehos)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Points utilisés</label>
+        <div style="display:flex;gap:12px;align-items:center;padding-top:6px">
+          <label style="margin:0;cursor:pointer;display:flex;align-items:center;gap:4px;color:#e0e0e0">
+            <input type="radio" name="reg-mode" value="full" checked onchange="runRegression()"> Tous (Full)
+          </label>
+          <label style="margin:0;cursor:pointer;display:flex;align-items:center;gap:4px;color:#e0e0e0">
+            <input type="radio" name="reg-mode" value="lp" onchange="runRegression()"> 3 plus bas (LP)
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>ff cible (analyse)</label>
+        <input type="number" id="ff-reg" value="1.7" min="0.1" step="0.1" onchange="runRegression()">
+      </div>
+      <div style="display:flex;align-items:flex-end">
+        <button class="primary" onclick="runRegression()">▶ Calculer régression</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-row">
+    <div class="panel" style="flex:2">
+      <h2>Courbe de flux (FFC)</h2>
+      <div class="chart-wrap"><canvas id="ffc-chart" width="520" height="320"></canvas></div>
+    </div>
+    <div class="panel" style="flex:1;min-width:260px">
+      <h2>Résultats FFC</h2>
+      <div class="table-scroll">
+        <table id="ffc-table">
+          <thead><tr><th>σ₁ (Pa)</th><th>fc (Pa)</th><th>FFC</th><th>Classification</th></tr></thead>
+          <tbody id="ffc-tbody"></tbody>
+        </table>
+      </div>
+      <div class="sep"></div>
+      <div class="reg-info" id="reg-coeff">
+        <span style="color:#667">— Lancer la régression —</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-row">
+    <div class="panel" style="flex:2">
+      <h2>Densité apparente ρ_b vs σ₁</h2>
+      <div class="chart-wrap"><canvas id="density-chart" width="520" height="280"></canvas></div>
+    </div>
+    <div class="panel" style="flex:1;min-width:260px">
+      <h2>Coefficients densité</h2>
+      <div class="reg-info" id="density-coeff">
+        <span style="color:#667">— Lancer la régression —</span>
+      </div>
+      <div class="sep"></div>
+      <h2>Hausner — Classification USP</h2>
+      <div class="table-scroll">
+        <table id="hausner-table">
+          <thead><tr><th>σ₁ (Pa)</th><th>HR</th><th>Classification</th></tr></thead>
+          <tbody id="hausner-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: ANALYSE / CUVES -->
+<div id="tab-cuves" class="tab-content">
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h2>Base de données des cuves / trémies</h2>
+      <button onclick="addVessel()">+ Ajouter cuve</button>
+    </div>
+    <div class="table-scroll">
+      <table id="vessel-table">
+        <thead><tr><th>Nom</th><th>Type</th><th>θ' (°)</th><th>B_sortie (cm)</th><th>D_cuve (m)</th><th>H_cone (mm)</th><th>H_rect (mm)</th><th></th></tr></thead>
+        <tbody id="vessel-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Paramètres d'analyse</h2>
+    <div class="form-row">
+      <div class="form-group"><label>ff cible</label><input type="number" id="ff-target" value="1.7" min="0.1" step="0.1"></div>
+      <div class="form-group"><label>SF (facteur sécurité)</label><input type="number" id="sf-val" value="1.5" min="1" step="0.1"></div>
+      <div class="form-group"><label>k (Janssen)</label><input type="number" id="k-val" value="0.5" min="0.1" step="0.05"></div>
+      <div class="form-group"><label>φ friction paroi (°)</label><input type="number" id="phi-val" value="20" min="0" max="45" step="1"></div>
+      <div class="form-group"><label>h_fill (ratio H_rect)</label><input type="number" id="hfill-val" value="0.67" min="0.1" max="1" step="0.01"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Modèle régression (analyse)</label>
+        <select id="analysis-model">
+          <option value="same">Même que Tab Régression</option>
+          <option value="linear">Linéaire</option>
+          <option value="power">Puissance</option>
+          <option value="log">Logarithmique</option>
+          <option value="mehos">Quadratique (Mehos)</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end">
+        <button class="primary" onclick="runAnalysis()">▶ Lancer l'analyse</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 4: RÉSULTATS -->
+<div id="tab-resultats" class="tab-content">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h2 style="margin:0">Résultats par cuve</h2>
+    <button onclick="exportCSV()">⬇ Export CSV</button>
+  </div>
+  <div id="results-container">
+    <div class="panel" style="color:#667;text-align:center;padding:30px">Lancer l'analyse (Tab Analyse/Cuves) pour voir les résultats</div>
+  </div>
+</div>
+
+<div class="status-bar" id="status-bar">Prêt</div>
+
+<script>
+// =====================================================================
+// STATE
+// =====================================================================
+let batches = [{name:'Lot 1', code:'', data:[]}];
+let activeBatch = 0;
+let vessels = [];
+let regrResult = null;
+let densResult = null;
+let analysisResults = [];
+
+const DEFAULT_ROWS = 10;
+
+const DEFAULT_VESSELS = [
+  {name:'Trémie conique 30°', type:'conique', theta:30, B:20, D:0.5, Hcone:300, Hrect:500},
+  {name:'Trémie conique 45°', type:'conique', theta:45, B:30, D:0.8, Hcone:400, Hrect:600},
+  {name:'Silo plan-flow',     type:'planflow', theta:20, B:25, D:0.6, Hcone:0,   Hrect:800},
+  {name:'Trémie carrée 35°',  type:'carre',   theta:35, B:22, D:0.5, Hcone:350, Hrect:550}
+];
+
+function init() {
+  vessels = DEFAULT_VESSELS.map(v => Object.assign({},v));
+  // Seed some example data for batch 1
+  batches[0].data = [
+    {sigma1:300,  fc:120, rhoB:580, Hausner:1.15},
+    {sigma1:600,  fc:200, rhoB:595, Hausner:1.13},
+    {sigma1:1200, fc:340, rhoB:610, Hausner:1.12},
+    {sigma1:2400, fc:560, rhoB:625, Hausner:1.10},
+    {sigma1:4800, fc:880, rhoB:645, Hausner:1.09},
+    {sigma1:300,  fc:130, rhoB:575, Hausner:1.16},
+    {sigma1:600,  fc:210, rhoB:590, Hausner:1.14},
+    {sigma1:1200, fc:350, rhoB:605, Hausner:1.12},
+    {sigma1:2400, fc:570, rhoB:620, Hausner:1.11},
+    {sigma1:4800, fc:900, rhoB:640, Hausner:1.09},
+  ];
+  renderBatchTabs();
+  renderDataTable();
+  renderVesselTable();
+  setStatus('Données d\'exemple chargées.');
+}
+
+// =====================================================================
+// UTILS
+// =====================================================================
+function setStatus(msg) {
+  document.getElementById('status-bar').textContent = msg;
+}
+
+function num(v, fallback=0) {
+  const n = parseFloat(v);
+  return isNaN(n) ? fallback : n;
+}
+
+function fmtN(v, d=2) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  return v.toFixed(d);
+}
+
+// =====================================================================
+// TAB SWITCHING
+// =====================================================================
+function switchTab(id) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  const btns = document.querySelectorAll('.tab-btn');
+  const names = ['donnees','regression','cuves','resultats'];
+  btns[names.indexOf(id)].classList.add('active');
+  if (id === 'regression') { runRegression(); }
+  if (id === 'resultats' && analysisResults.length) { renderResults(); }
+}
+
+// =====================================================================
+// BATCH MANAGEMENT
+// =====================================================================
+function renderBatchTabs() {
+  const c = document.getElementById('batch-tabs');
+  c.innerHTML = '';
+  batches.forEach((b,i) => {
+    const btn = document.createElement('button');
+    btn.className = 'batch-tab' + (i===activeBatch?' active':'');
+    btn.textContent = b.name || ('Lot '+(i+1));
+    btn.onclick = () => switchBatch(i);
+    c.appendChild(btn);
+  });
+  document.getElementById('batch-name').value = batches[activeBatch].name;
+  document.getElementById('batch-code').value = batches[activeBatch].code;
+}
+
+function switchBatch(i) {
+  activeBatch = i;
+  renderBatchTabs();
+  renderDataTable();
+}
+
+function addBatch() {
+  if (batches.length >= 5) { alert('Maximum 5 lots.'); return; }
+  batches.push({name:'Lot '+(batches.length+1), code:'', data:[]});
+  activeBatch = batches.length - 1;
+  renderBatchTabs();
+  renderDataTable();
+}
+
+function removeBatch() {
+  if (batches.length <= 1) { alert('Au moins un lot requis.'); return; }
+  batches.splice(activeBatch, 1);
+  activeBatch = Math.max(0, activeBatch-1);
+  renderBatchTabs();
+  renderDataTable();
+}
+
+function updateBatchMeta() {
+  batches[activeBatch].name = document.getElementById('batch-name').value;
+  batches[activeBatch].code = document.getElementById('batch-code').value;
+  renderBatchTabs();
+}
+
+// =====================================================================
+// DATA TABLE
+// =====================================================================
+function renderDataTable() {
+  const tbody = document.getElementById('data-tbody');
+  const data = batches[activeBatch].data;
+  // Pad to at least DEFAULT_ROWS
+  while (data.length < DEFAULT_ROWS) data.push({sigma1:'',fc:'',rhoB:'',Hausner:''});
+  tbody.innerHTML = '';
+  data.forEach((row,i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:#556">${i+1}</td>
+      <td><input type="number" min="0" value="${row.sigma1}" onchange="updateCell(${i},'sigma1',this.value)" placeholder="—"></td>
+      <td><input type="number" min="0" value="${row.fc}" onchange="updateCell(${i},'fc',this.value)" placeholder="—"></td>
+      <td><input type="number" min="0" value="${row.rhoB}" onchange="updateCell(${i},'rhoB',this.value)" placeholder="—"></td>
+      <td><input type="number" min="0" step="0.01" value="${row.Hausner}" onchange="updateCell(${i},'Hausner',this.value)" placeholder="—"></td>
+      <td><button class="danger" style="padding:2px 7px;font-size:11px" onclick="deleteRow(${i})">×</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateCell(i, field, val) {
+  batches[activeBatch].data[i][field] = val === '' ? '' : parseFloat(val);
+}
+
+function addDataRow() {
+  batches[activeBatch].data.push({sigma1:'',fc:'',rhoB:'',Hausner:''});
+  renderDataTable();
+}
+
+function deleteRow(i) {
+  batches[activeBatch].data.splice(i,1);
+  renderDataTable();
+}
+
+function clearData() {
+  if (!confirm('Vider toutes les données du lot actif ?')) return;
+  batches[activeBatch].data = [];
+  renderDataTable();
+}
+
+function importCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split(/\r?\n/).filter(l => l.trim());
+    if (!lines.length) return;
+    // detect header
+    let start = 0;
+    if (isNaN(parseFloat(lines[0].split(/[,;]/)[0]))) start = 1;
+    const newData = [];
+    for (let i = start; i < lines.length; i++) {
+      const cols = lines[i].split(/[,;]/);
+      if (cols.length < 2) continue;
+      newData.push({
+        sigma1: num(cols[0], ''),
+        fc: num(cols[1], ''),
+        rhoB: cols[2] !== undefined ? num(cols[2], '') : '',
+        Hausner: cols[3] !== undefined ? num(cols[3], '') : ''
+      });
+    }
+    batches[activeBatch].data = newData;
+    renderDataTable();
+    setStatus(`Import CSV: ${newData.length} lignes chargées.`);
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// =====================================================================
+// REGRESSION MATH
+// =====================================================================
+function getValidData(batch) {
+  return (batch.data || []).filter(r =>
+    r.sigma1 !== '' && r.fc !== '' &&
+    !isNaN(parseFloat(r.sigma1)) && !isNaN(parseFloat(r.fc)) &&
+    parseFloat(r.sigma1) > 0 && parseFloat(r.fc) > 0
+  ).map(r => ({sigma1: parseFloat(r.sigma1), fc: parseFloat(r.fc),
+               rhoB: parseFloat(r.rhoB)||null, Hausner: parseFloat(r.Hausner)||null}));
+}
+
+function averageByLevel(data) {
+  const map = {};
+  data.forEach(r => {
+    if (!map[r.sigma1]) map[r.sigma1] = {sigma1:r.sigma1, fcs:[], rhoBs:[], Hausners:[]};
+    map[r.sigma1].fcs.push(r.fc);
+    if (r.rhoB) map[r.sigma1].rhoBs.push(r.rhoB);
+    if (r.Hausner) map[r.sigma1].Hausners.push(r.Hausner);
+  });
+  return Object.values(map).sort((a,b)=>a.sigma1-b.sigma1).map(v => ({
+    sigma1: v.sigma1,
+    fc: v.fcs.reduce((a,b)=>a+b,0)/v.fcs.length,
+    rhoB: v.rhoBs.length ? v.rhoBs.reduce((a,b)=>a+b,0)/v.rhoBs.length : null,
+    Hausner: v.Hausners.length ? v.Hausners.reduce((a,b)=>a+b,0)/v.Hausners.length : null
+  }));
+}
+
+function linearReg(xs, ys) {
+  const n = xs.length;
+  if (n < 2) return null;
+  let sx=0, sy=0, sxy=0, sx2=0;
+  for (let i=0;i<n;i++){sx+=xs[i];sy+=ys[i];sxy+=xs[i]*ys[i];sx2+=xs[i]*xs[i];}
+  const denom = n*sx2 - sx*sx;
+  if (Math.abs(denom)<1e-15) return null;
+  const b = (n*sxy - sx*sy)/denom;
+  const a = (sy - b*sx)/n;
+  const ybar = sy/n;
+  let sst=0, ssr=0;
+  for(let i=0;i<n;i++){sst+=(ys[i]-ybar)**2; ssr+=(ys[i]-(a+b*xs[i]))**2;}
+  const r2 = sst>1e-15 ? 1-ssr/sst : 1;
+  return {a, b, r2};
+}
+
+function fitLinear(xs, ys) { return linearReg(xs,ys); }
+
+function fitPower(xs, ys) {
+  const lx = xs.map(x=>Math.log(x));
+  const ly = ys.map(y=>Math.log(y));
+  const res = linearReg(lx,ly);
+  if (!res) return null;
+  // Recompute R² in original space
+  const a = Math.exp(res.a), b = res.b;
+  const yhat = xs.map(x => a*Math.pow(x,b));
+  const ybar = ys.reduce((s,v)=>s+v,0)/ys.length;
+  let sst=0, ssr=0;
+  for(let i=0;i<ys.length;i++){sst+=(ys[i]-ybar)**2; ssr+=(ys[i]-yhat[i])**2;}
+  const r2 = sst>1e-15 ? 1-ssr/sst : 1;
+  return {a, b, r2};
+}
+
+function fitLog(xs, ys) {
+  const lx = xs.map(x=>Math.log(x));
+  return linearReg(lx, ys);
+}
+
+function fitMehos(xs, ys) {
+  const n = xs.length;
+  if (n < 3) return null;
+  // Step 1: estimate a from 2 lowest-sigma1 points
+  const sorted = xs.map((x,i)=>({x,y:ys[i]})).sort((a,b)=>a.x-b.x);
+  const x1=sorted[0].x, y1=sorted[0].y, x2=sorted[1].x, y2=sorted[1].y;
+  let a_est;
+  if (Math.abs(x2-x1)<1e-10) { a_est = Math.min(y1,y2)*0.8; }
+  else { a_est = y1 - (y2-y1)/(x2-x1)*x1; }
+  const a = Math.max(0, a_est);
+  // Step 2: y' = fc - a
+  const yp = sorted.map(p => p.y - a);
+  const X = sorted.map(p => p.x);
+  // Step 3: Σx², Σx³, Σx⁴, Σxy', Σx²y'
+  let sx2=0,sx3=0,sx4=0,sxy=0,sx2y=0;
+  for(let i=0;i<n;i++){
+    const xi=X[i], yi=yp[i];
+    sx2+=xi*xi; sx3+=xi*xi*xi; sx4+=xi*xi*xi*xi;
+    sxy+=xi*yi; sx2y+=xi*xi*yi;
+  }
+  // [sx2 sx3; sx3 sx4] * [b;c]^T = [sxy; sx2y]
+  const det = sx2*sx4 - sx3*sx3;
+  if (Math.abs(det)<1e-20) return null;
+  const b = (sxy*sx4 - sx2y*sx3)/det;
+  const c = (sx2*sx2y - sx3*sxy)/det;
+  // R²
+  const yhat = X.map(x => a + b*x + c*x*x);
+  const allY = sorted.map(p=>p.y);
+  const ybar = allY.reduce((s,v)=>s+v,0)/n;
+  let sst=0, ssr=0;
+  for(let i=0;i<n;i++){sst+=(allY[i]-ybar)**2; ssr+=(allY[i]-yhat[i])**2;}
+  const r2 = sst>1e-15 ? 1-ssr/sst : 1;
+  return {a, b, c, r2};
+}
+
+function fitDensity(xs, rhos) {
+  // ρ_b = ρB0 × (σ1/1000)^β
+  const lx = xs.map(x=>Math.log(x/1000));
+  const ly = rhos.map(r=>Math.log(r));
+  const res = linearReg(lx, ly);
+  if (!res) return null;
+  const rhoB0 = Math.exp(res.a), beta = res.b;
+  const yhat = xs.map(x => rhoB0*Math.pow(x/1000, beta));
+  const ybar = rhos.reduce((s,v)=>s+v,0)/rhos.length;
+  let sst=0, ssr=0;
+  for(let i=0;i<rhos.length;i++){sst+=(rhos[i]-ybar)**2; ssr+=(rhos[i]-yhat[i])**2;}
+  const r2 = sst>1e-15 ? 1-ssr/sst : 1;
+  return {rhoB0, beta, r2};
+}
+
+function criticalSigma1(model, params, ff) {
+  const {a,b,c} = params;
+  if (model === 'linear') {
+    // fc = a + b*x, line = x/ff → solve a+bx = x/ff → a = x(1/ff - b)
+    const denom = 1/ff - b;
+    if (Math.abs(denom)<1e-15 || a < 0) return null;
+    const sig = a / denom;
+    return sig > 0 ? sig : null;
+  } else if (model === 'power') {
+    // fc = a*x^b, line = x/ff → a*x^b = x/ff → a*x^(b-1) = 1/ff
+    if (b >= 1 || a <= 0) return null;
+    return Math.pow(1/(a*ff), 1/(b-1));
+  } else if (model === 'log') {
+    // fc = a + b*ln(x) = x/ff → bisection
+    const f = x => a + b*Math.log(x) - x/ff;
+    // find bracket
+    let lo=1, hi=1e7;
+    if (f(lo)*f(hi) > 0) {
+      // try to find root differently
+      for (let x=10; x<1e7; x*=2) {
+        if (f(x)*f(x*2)<=0){lo=x;hi=x*2;break;}
+      }
+      if (f(lo)*f(hi)>0) return null;
+    }
+    for(let i=0;i<80;i++){
+      const mid=(lo+hi)/2;
+      if(f(lo)*f(mid)<=0) hi=mid; else lo=mid;
+      if((hi-lo)<0.01) break;
+    }
+    const root=(lo+hi)/2;
+    return root > 0 ? root : null;
+  } else if (model === 'mehos') {
+    // c*x² + (b-1/ff)*x + a = 0
+    const A=c, B=b-1/ff, C=a;
+    if (Math.abs(A)<1e-20) {
+      if (Math.abs(B)<1e-15) return null;
+      const x = -C/B;
+      return x>0 ? x : null;
+    }
+    const disc = B*B - 4*A*C;
+    if (disc < 0) return null;
+    const sq = Math.sqrt(disc);
+    const r1 = (-B-sq)/(2*A);
+    const r2 = (-B+sq)/(2*A);
+    const roots = [r1,r2].filter(r=>r>0).sort((a,b)=>a-b);
+    return roots.length ? roots[0] : null;
+  }
+  return null;
+}
+
+function densityAtSigma1(rhoB0, beta, sigma1) {
+  if (sigma1 <= 0) return rhoB0;
+  return rhoB0 * Math.pow(sigma1/1000, beta);
+}
+
+// =====================================================================
+// REGRESSION RUNNER
+// =====================================================================
+function runRegression() {
+  const batch = batches[activeBatch];
+  const rawData = getValidData(batch);
+  if (rawData.length < 2) {
+    setStatus('Pas assez de données valides pour la régression (min 2 points).');
+    clearCharts();
+    return;
+  }
+  const averaged = averageByLevel(rawData);
+  const model = document.getElementById('reg-model').value;
+  const mode = document.querySelector('input[name="reg-mode"]:checked').value;
+  const ff = num(document.getElementById('ff-reg').value, 1.7);
+
+  // Select data for FFC regression
+  let fccData = averaged.slice();
+  if (mode === 'lp') fccData = averaged.slice(0, 3);
+
+  const xs = fccData.map(r=>r.sigma1);
+  const ys = fccData.map(r=>r.fc);
+
+  let reg = null;
+  if (model === 'linear') reg = fitLinear(xs, ys);
+  else if (model === 'power') reg = fitPower(xs, ys);
+  else if (model === 'log') reg = fitLog(xs, ys);
+  else if (model === 'mehos') reg = fitMehos(xs, ys);
+
+  regrResult = reg ? Object.assign({model}, reg) : null;
+
+  // Density regression
+  const densData = averaged.filter(r=>r.rhoB !== null && r.rhoB > 0);
+  // Also include reference point if provided
+  const sigRef = num(document.getElementById('sigma-ref').value, 500);
+  const rhoRef = num(document.getElementById('rho-ref').value, 600);
+  let allDensData = densData.slice();
+  if (sigRef > 0 && rhoRef > 0) {
+    // Check if already present
+    const exists = allDensData.some(d=>Math.abs(d.sigma1-sigRef)<1);
+    if (!exists) allDensData.push({sigma1:sigRef, rhoB:rhoRef});
+    allDensData.sort((a,b)=>a.sigma1-b.sigma1);
+  }
+
+  if (allDensData.length >= 2) {
+    densResult = fitDensity(allDensData.map(r=>r.sigma1), allDensData.map(r=>r.rhoB));
+  } else if (rhoRef > 0) {
+    densResult = {rhoB0: rhoRef, beta: 0, r2: null};
+  } else {
+    densResult = null;
+  }
+
+  // σ1_crit
+  let sigma1_crit = null;
+  if (regrResult) {
+    sigma1_crit = criticalSigma1(model, regrResult, ff);
+  }
+
+  // Render FFC table
+  renderFFCTable(averaged, regrResult);
+  // Render density table
+  renderHausnerTable(averaged);
+  // Render coefficient display
+  renderCoeffDisplay(regrResult, sigma1_crit, ff, densResult);
+  // Draw charts
+  drawFFCChart(averaged, regrResult, sigma1_crit, ff);
+  drawDensityChart(allDensData, densResult);
+
+  const msg = regrResult
+    ? `Régression ${model}: R²=${fmtN(regrResult.r2,4)}${sigma1_crit?', σ1_crit='+fmtN(sigma1_crit,1)+' Pa':''}`
+    : 'Échec de la régression.';
+  setStatus(msg);
+}
+
+function jenikeClass(ffc) {
+  if (ffc < 1) return {label:'Non coulant', cls:'badge-red'};
+  if (ffc < 2) return {label:'Très cohésif', cls:'badge-red'};
+  if (ffc < 4) return {label:'Cohésif', cls:'badge-yellow'};
+  if (ffc < 10) return {label:'Facile', cls:'badge-green'};
+  return {label:'Libre', cls:'badge-blue'};
+}
+
+function hausnerClass(hr) {
+  if (hr < 1.05) return {label:'Excellent', cls:'badge-green'};
+  if (hr < 1.12) return {label:'Bon', cls:'badge-green'};
+  if (hr < 1.18) return {label:'Acceptable', cls:'badge-blue'};
+  if (hr < 1.25) return {label:'Passable', cls:'badge-yellow'};
+  if (hr < 1.35) return {label:'Mauvais', cls:'badge-yellow'};
+  if (hr < 1.45) return {label:'Très mauvais', cls:'badge-red'};
+  return {label:'Inadmissible', cls:'badge-red'};
+}
+
+function renderFFCTable(averaged, reg) {
+  const tbody = document.getElementById('ffc-tbody');
+  tbody.innerHTML = '';
+  averaged.forEach(r => {
+    let ffc = null, clsObj = null;
+    if (r.fc > 0) { ffc = r.sigma1 / r.fc; clsObj = jenikeClass(ffc); }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fmtN(r.sigma1,0)}</td>
+      <td>${fmtN(r.fc,1)}</td>
+      <td>${ffc!==null?fmtN(ffc,2):'—'}</td>
+      <td>${clsObj?`<span class="badge ${clsObj.cls}">${clsObj.label}</span>`:'—'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderHausnerTable(averaged) {
+  const tbody = document.getElementById('hausner-tbody');
+  tbody.innerHTML = '';
+  averaged.forEach(r => {
+    if (r.Hausner === null) return;
+    const cls = hausnerClass(r.Hausner);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fmtN(r.sigma1,0)}</td>
+      <td>${fmtN(r.Hausner,3)}</td>
+      <td><span class="badge ${cls.cls}">${cls.label}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderCoeffDisplay(reg, sigma1_crit, ff, dens) {
+  const el = document.getElementById('reg-coeff');
+  if (!reg) { el.innerHTML='<span style="color:#f07070">Régression impossible.</span>'; return; }
+  let html = '';
+  const modelNames = {linear:'Linéaire (fc = a + b·σ₁)',power:'Puissance (fc = a·σ₁ᵇ)',log:'Logarithmique (fc = a + b·ln(σ₁))',mehos:'Quadratique Mehos (fc = a + b·σ₁ + c·σ₁²)'};
+  html += `<div>Modèle: <span class="eq">${modelNames[reg.model]||reg.model}</span></div>`;
+  html += `<div>a = <span class="val">${fmtN(reg.a,4)}</span></div>`;
+  html += `<div>b = <span class="val">${fmtN(reg.b,6)}</span></div>`;
+  if (reg.c !== undefined) html += `<div>c = <span class="val">${fmtN(reg.c,8)}</span></div>`;
+  html += `<div>R² = <span class="val">${fmtN(reg.r2,5)}</span></div>`;
+  if (sigma1_crit !== null) {
+    const cls = jenikeClass(ff);
+    html += `<div class="sep" style="margin:6px 0"></div>`;
+    html += `<div>σ₁_crit (ff=${ff}) = <span class="val">${fmtN(sigma1_crit,1)} Pa</span></div>`;
+    html += `<div>Classification: <span class="eq">${cls.label}</span></div>`;
+  } else {
+    html += `<div style="color:#f07070">σ₁_crit introuvable pour ff=${ff}</div>`;
+  }
+  el.innerHTML = html;
+
+  const eld = document.getElementById('density-coeff');
+  if (!dens) { eld.innerHTML='<span style="color:#667">Pas de données densité.</span>'; return; }
+  let dhtml = '';
+  dhtml += `<div>Modèle: <span class="eq">ρ_b = ρ_B0 · (σ₁/1000)^β</span></div>`;
+  dhtml += `<div>ρ_B0 = <span class="val">${fmtN(dens.rhoB0,2)} kg/m³</span></div>`;
+  dhtml += `<div>β = <span class="val">${fmtN(dens.beta,5)}</span></div>`;
+  if (dens.r2 !== null) dhtml += `<div>R² = <span class="val">${fmtN(dens.r2,5)}</span></div>`;
+  eld.innerHTML = dhtml;
+}
+
+function clearCharts() {
+  ['ffc-chart','density-chart'].forEach(id => {
+    const c = document.getElementById(id);
+    if (c) { const ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height); }
+  });
+  document.getElementById('reg-coeff').innerHTML='<span style="color:#667">— Lancer la régression —</span>';
+  document.getElementById('density-coeff').innerHTML='<span style="color:#667">— Lancer la régression —</span>';
+}
+
+// =====================================================================
+// CANVAS CHARTS
+// =====================================================================
+const CHART_BG = '#0a0d14';
+const AXIS_COLOR = '#4a5566';
+const GRID_COLOR = '#1e2235';
+const TEXT_COLOR = '#8899aa';
+const DATA_COLOR = '#7eb8f7';
+const CURVE_COLOR = '#40c080';
+const DENSITY_COLOR = '#f0a040';
+
+function drawAxes(ctx, cx, margin, xMin, xMax, yMin, yMax, xLabel, yLabel) {
+  const {left:ml,right:mr,top:mt,bottom:mb} = margin;
+  const W = cx.canvas.width - ml - mr;
+  const H = cx.canvas.height - mt - mb;
+
+  // Background
+  ctx.fillStyle = CHART_BG;
+  ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height);
+
+  // Grid and ticks
+  ctx.strokeStyle = GRID_COLOR;
+  ctx.lineWidth = 0.5;
+  const nTickX = 5, nTickY = 5;
+  for (let i=0;i<=nTickX;i++) {
+    const x = ml + i*W/nTickX;
+    ctx.beginPath(); ctx.moveTo(x,mt); ctx.lineTo(x,mt+H); ctx.stroke();
+    const val = xMin + i*(xMax-xMin)/nTickX;
+    ctx.fillStyle = TEXT_COLOR;
+    ctx.font='10px Segoe UI,Arial';
+    ctx.textAlign='center';
+    ctx.fillText(val>=1000?`${(val/1000).toFixed(1)}k`:val.toFixed(0), x, mt+H+14);
+  }
+  for (let i=0;i<=nTickY;i++) {
+    const y = mt + i*H/nTickY;
+    ctx.beginPath(); ctx.moveTo(ml,y); ctx.lineTo(ml+W,y); ctx.stroke();
+    const val = yMin + (nTickY-i)*(yMax-yMin)/nTickY;
+    ctx.fillStyle = TEXT_COLOR;
+    ctx.font='10px Segoe UI,Arial';
+    ctx.textAlign='right';
+    ctx.fillText(val>=1000?`${(val/1000).toFixed(1)}k`:val.toFixed(0), ml-4, y+4);
+  }
+
+  // Axes
+  ctx.strokeStyle = AXIS_COLOR;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(ml,mt); ctx.lineTo(ml,mt+H); ctx.lineTo(ml+W,mt+H); ctx.stroke();
+
+  // Labels
+  ctx.fillStyle = '#aabbcc';
+  ctx.font='11px Segoe UI,Arial';
+  ctx.textAlign='center';
+  ctx.fillText(xLabel, ml+W/2, ctx.canvas.height-4);
+  ctx.save(); ctx.translate(12, mt+H/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText(yLabel, 0, 0); ctx.restore();
+}
+
+function toCanvas(x, y, margin, xMin, xMax, yMin, yMax, W, H) {
+  const ml=margin.left, mt=margin.top;
+  const cx = ml + (x-xMin)/(xMax-xMin)*(W);
+  const cy = mt + (yMax-y)/(yMax-yMin)*(H);
+  return {cx,cy};
+}
+
+function drawFFCChart(averaged, reg, sigma1_crit, ff) {
+  const canvas = document.getElementById('ffc-chart');
+  const ctx = canvas.getContext('2d');
+  const margin = {left:60,right:30,top:20,bottom:36};
+  const W = canvas.width - margin.left - margin.right;
+  const H = canvas.height - margin.top - margin.bottom;
+
+  // Ranges
+  const allX = averaged.map(r=>r.sigma1);
+  const allY = averaged.map(r=>r.fc);
+  let xMax = allX.length ? Math.max(...allX)*1.15 : 5000;
+  let yMax = allY.length ? Math.max(...allY)*1.25 : 1000;
+  const xMin = 0, yMin = 0;
+
+  drawAxes(ctx, canvas, margin, xMin, xMax, yMin, yMax, 'σ₁ (Pa)', 'fc (Pa)');
+
+  // ff lines: y = x/ff
+  const ffLines = [{ff:1.3,color:'#556677'},{ff:1.7,color:'#556688'},{ff:4,color:'#445566'},{ff:10,color:'#334455'}];
+  ffLines.forEach(({ff:f,color}) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.8;
+    ctx.setLineDash([4,4]);
+    ctx.beginPath();
+    const p1 = toCanvas(xMin, xMin/f, margin, xMin, xMax, yMin, yMax, W, H);
+    const p2 = toCanvas(xMax, xMax/f, margin, xMin, xMax, yMin, yMax, W, H);
+    ctx.moveTo(p1.cx, p1.cy); ctx.lineTo(p2.cx, p2.cy); ctx.stroke();
+    // Label
+    ctx.fillStyle = color;
+    ctx.font = '10px Segoe UI,Arial';
+    ctx.textAlign = 'left';
+    const labelX = xMax * 0.85;
+    const labelY = labelX / f;
+    if (labelY >= yMin && labelY <= yMax) {
+      const lp = toCanvas(labelX, labelY, margin, xMin, xMax, yMin, yMax, W, H);
+      ctx.fillText(`ff=${f}`, lp.cx+2, lp.cy-3);
+    }
+    ctx.setLineDash([]);
+  });
+
+  // Regression curve
+  if (reg) {
+    ctx.strokeStyle = CURVE_COLOR;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    let first = true;
+    for (let i=0; i<=200; i++) {
+      const x = xMin + (xMax-xMin)*i/200;
+      if (x <= 0) continue;
+      let y = evalModel(reg, x);
+      if (y === null || isNaN(y) || y < 0) continue;
+      const p = toCanvas(x, y, margin, xMin, xMax, yMin, yMax, W, H);
+      if (first){ctx.moveTo(p.cx,p.cy);first=false;}else ctx.lineTo(p.cx,p.cy);
+    }
+    ctx.stroke();
+  }
+
+  // Data points
+  averaged.forEach(r => {
+    const p = toCanvas(r.sigma1, r.fc, margin, xMin, xMax, yMin, yMax, W, H);
+    ctx.fillStyle = DATA_COLOR;
+    ctx.beginPath(); ctx.arc(p.cx, p.cy, 4, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#0a0d14'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(p.cx, p.cy, 4, 0, Math.PI*2); ctx.stroke();
+  });
+
+  // σ1_crit crosshair
+  if (sigma1_crit !== null && sigma1_crit > xMin && sigma1_crit < xMax) {
+    const fc_crit = sigma1_crit / ff;
+    const p = toCanvas(sigma1_crit, fc_crit, margin, xMin, xMax, yMin, yMax, W, H);
+    ctx.strokeStyle = '#ff8040';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(p.cx,margin.top); ctx.lineTo(p.cx,margin.top+H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(margin.left,p.cy); ctx.lineTo(margin.left+W,p.cy); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ff8040';
+    ctx.beginPath(); ctx.arc(p.cx,p.cy,5,0,Math.PI*2); ctx.fill();
+    ctx.font='10px Segoe UI,Arial'; ctx.textAlign='left';
+    ctx.fillText(`σ₁c=${fmtN(sigma1_crit,0)}Pa`, p.cx+6, p.cy-4);
+  }
+}
+
+function drawDensityChart(densData, dens) {
+  const canvas = document.getElementById('density-chart');
+  const ctx = canvas.getContext('2d');
+  const margin = {left:65,right:30,top:20,bottom:36};
+  const W = canvas.width - margin.left - margin.right;
+  const H = canvas.height - margin.top - margin.bottom;
+
+  const allX = densData.map(r=>r.sigma1).filter(v=>v>0);
+  const allY = densData.map(r=>r.rhoB).filter(v=>v&&v>0);
+  let xMax = allX.length ? Math.max(...allX)*1.2 : 5000;
+  let yMax = allY.length ? Math.max(...allY)*1.15 : 800;
+  let yMin = allY.length ? Math.max(0, Math.min(...allY)*0.9) : 400;
+  const xMin = 0;
+
+  drawAxes(ctx, canvas, margin, xMin, xMax, yMin, yMax, 'σ₁ (Pa)', 'ρ_b (kg/m³)');
+
+  // Fitted curve
+  if (dens) {
+    ctx.strokeStyle = DENSITY_COLOR;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    let first=true;
+    const xStart = allX.length ? Math.min(...allX)*0.5 : 100;
+    for (let i=1;i<=200;i++) {
+      const x = xStart + (xMax-xStart)*i/200;
+      if (x <= 0) continue;
+      const y = densityAtSigma1(dens.rhoB0, dens.beta, x);
+      if (isNaN(y)) continue;
+      const p = toCanvas(x, y, margin, xMin, xMax, yMin, yMax, W, H);
+      if (p.cy < margin.top || p.cy > margin.top+H) { first=true; continue; }
+      if (first){ctx.moveTo(p.cx,p.cy);first=false;}else ctx.lineTo(p.cx,p.cy);
+    }
+    ctx.stroke();
+    // Equation label
+    ctx.fillStyle = DENSITY_COLOR;
+    ctx.font='10px Segoe UI,Arial'; ctx.textAlign='left';
+    ctx.fillText(`ρ_b = ${fmtN(dens.rhoB0,1)}·(σ₁/1000)^${fmtN(dens.beta,4)}`, margin.left+8, margin.top+16);
+  }
+
+  // Data points
+  densData.forEach(r => {
+    if (!r.rhoB || r.rhoB<=0) return;
+    const p = toCanvas(r.sigma1, r.rhoB, margin, xMin, xMax, yMin, yMax, W, H);
+    ctx.fillStyle = '#80c0ff';
+    ctx.beginPath(); ctx.arc(p.cx,p.cy,4,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#0a0d14';ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(p.cx,p.cy,4,0,Math.PI*2); ctx.stroke();
+  });
+}
+
+function evalModel(reg, x) {
+  if (!reg || x <= 0) return null;
+  if (reg.model==='linear') return reg.a + reg.b*x;
+  if (reg.model==='power') return reg.a * Math.pow(x, reg.b);
+  if (reg.model==='log') return reg.a + reg.b*Math.log(x);
+  if (reg.model==='mehos') return reg.a + reg.b*x + reg.c*x*x;
+  return null;
+}
+
+// =====================================================================
+// VESSEL TABLE
+// =====================================================================
+const VESSEL_TYPES = [
+  {val:'conique', label:'Conique/Circulaire'},
+  {val:'carre',   label:'Carré'},
+  {val:'planflow',label:'Plan-flow/Slot'}
+];
+
+function renderVesselTable() {
+  const tbody = document.getElementById('vessel-tbody');
+  tbody.innerHTML = '';
+  vessels.forEach((v,i) => {
+    const tr = document.createElement('tr');
+    const typeOpts = VESSEL_TYPES.map(t=>`<option value="${t.val}" ${v.type===t.val?'selected':''}>${t.label}</option>`).join('');
+    tr.innerHTML = `
+      <td><input type="text" value="${v.name}" onchange="vessels[${i}].name=this.value" style="width:140px"></td>
+      <td><select onchange="vessels[${i}].type=this.value" style="width:145px">${typeOpts}</select></td>
+      <td><input type="number" value="${v.theta}" min="0" max="89" onchange="vessels[${i}].theta=parseFloat(this.value)||0" style="width:55px"></td>
+      <td><input type="number" value="${v.B}" min="0" onchange="vessels[${i}].B=parseFloat(this.value)||0" style="width:65px"></td>
+      <td><input type="number" value="${v.D}" min="0" step="0.05" onchange="vessels[${i}].D=parseFloat(this.value)||0" style="width:65px"></td>
+      <td><input type="number" value="${v.Hcone}" min="0" onchange="vessels[${i}].Hcone=parseFloat(this.value)||0" style="width:70px"></td>
+      <td><input type="number" value="${v.Hrect}" min="0" onchange="vessels[${i}].Hrect=parseFloat(this.value)||0" style="width:70px"></td>
+      <td><button class="danger" onclick="removeVessel(${i})">×</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function addVessel() {
+  vessels.push({name:'Nouvelle cuve', type:'conique', theta:30, B:20, D:0.5, Hcone:300, Hrect:500});
+  renderVesselTable();
+}
+
+function removeVessel(i) {
+  vessels.splice(i,1);
+  renderVesselTable();
+}
+
+// =====================================================================
+// ENGINEERING CALCULATIONS
+// =====================================================================
+function Hfactor(type, theta) {
+  if (type==='conique') return (130 + theta) / 65;
+  if (type==='carre')   return 0.9 * (130 + theta) / 65;
+  if (type==='planflow')return (200 + theta) / 200;
+  return (130 + theta) / 65;
+}
+
+function Bcrit(H, sigma1, rhoB) {
+  // B_crit (cm) = H × σ1 × 100 / (ρ_b × g)
+  return H * sigma1 * 100 / (rhoB * 9.81);
+}
+
+function janssenStress(rhoB, D, Hrect, hFill, k, phiDeg) {
+  // σ_v_Janssen at h = hFill × Hrect
+  // R_H = D/4 for circular cross-section
+  const g = 9.81;
+  const phi = phiDeg * Math.PI / 180;
+  const RH = D / 4;
+  const h = hFill * Hrect; // meters
+  const ktan = k * Math.tan(phi);
+  if (Math.abs(ktan) < 1e-10) return rhoB * g * h;
+  return rhoB * g * RH / ktan * (1 - Math.exp(-ktan * h / RH));
+}
+
+function schulzeOutletStress(rhoB, D, thetaDeg, Hcone_m, sigma_v_top, k, phiDeg) {
+  // Schulze conical stress at outlet
+  // theta = half-angle of cone
+  const g = 9.81;
+  const phi = phiDeg * Math.PI / 180;
+  const theta = thetaDeg * Math.PI / 180;
+  if (Math.tan(theta) < 1e-10) return sigma_v_top; // flat bottom
+  // Z0 = D / (2*tan(theta))
+  const Z0 = D / (2 * Math.tan(theta));
+  // Z at top of cone (cylinder/cone junction) = Z0 + Hcone_m
+  const Z_top = Z0 + Hcone_m;
+  // n exponent
+  const n = 2*k*(1 + Math.tan(phiDeg*Math.PI/180)/Math.tan(theta)) - 1;
+  if (Math.abs(n-1) < 0.01) {
+    // special case n≈1: use L'Hopital (approximation)
+    const r = Z0 / Z_top;
+    return sigma_v_top * r + rhoB*g*Z_top*Math.log(Z_top/Z0)*r;
+  }
+  // r = Z0 / Z_top
+  const r = Z0 / Z_top;
+  // σ_outlet = σ_v_top × r^n + ρ_b×g×Z_top/(n-1) × (1 - r^(n-1))
+  const sigma_outlet = sigma_v_top * Math.pow(r, n)
+    + rhoB * g * Z_top / (n-1) * (1 - Math.pow(r, n-1));
+  return sigma_outlet;
+}
+
+function analyzeVessel(vessel, regrModel, densReg, params) {
+  const {ff, SF, k, phi, hFill} = params;
+  const Hcone_m = vessel.Hcone / 1000;
+  const Hrect_m = vessel.Hrect / 1000;
+
+  // σ1_crit from FFC regression
+  const sigma1_crit = regrModel ? criticalSigma1(regrModel.model, regrModel, ff) : null;
+
+  // ρ_b at σ1_crit
+  let rhoB_crit = null;
+  if (densReg && sigma1_crit) {
+    rhoB_crit = densityAtSigma1(densReg.rhoB0, densReg.beta, sigma1_crit);
+  } else if (densReg) {
+    rhoB_crit = densReg.rhoB0;
+  }
+
+  // H(θ')
+  const H = Hfactor(vessel.type, vessel.theta);
+
+  // B_crit (cm)
+  let B_crit = null;
+  if (sigma1_crit && rhoB_crit) {
+    B_crit = Bcrit(H, sigma1_crit, rhoB_crit);
+  }
+
+  // B ratio
+  const B_ratio = (B_crit && vessel.B > 0) ? vessel.B / B_crit : null;
+  let B_status = 'unknown';
+  if (B_ratio !== null) {
+    if (B_ratio >= SF) B_status = 'pass';
+    else if (B_ratio >= 1) B_status = 'marginal';
+    else B_status = 'fail';
+  }
+
+  // Janssen stress
+  let rhoB_avg = densReg ? densityAtSigma1(densReg.rhoB0, densReg.beta, 1000) : (rhoB_crit || 600);
+  const sigma_janssen = janssenStress(rhoB_avg, vessel.D, Hrect_m, hFill, k, phi);
+
+  // Schulze outlet stress
+  let sigma1_actif = sigma_janssen; // fallback
+  if (Hcone_m > 0 && vessel.theta > 0) {
+    sigma1_actif = schulzeOutletStress(rhoB_avg, vessel.D, vessel.theta, Hcone_m, sigma_janssen, k, phi);
+  }
+
+  // Flow state
+  let flowState = 'unknown';
+  if (sigma1_crit !== null) {
+    flowState = sigma1_actif < sigma1_crit ? 'flowing' : 'arching';
+  }
+
+  return {
+    vessel, sigma1_crit, rhoB_crit, H, B_crit, B_ratio, B_status,
+    sigma_janssen, sigma1_actif, flowState, ff, SF
+  };
+}
+
+// =====================================================================
+// ANALYSIS RUNNER
+// =====================================================================
+function runAnalysis() {
+  const ff = num(document.getElementById('ff-target').value, 1.7);
+  const SF = num(document.getElementById('sf-val').value, 1.5);
+  const k = num(document.getElementById('k-val').value, 0.5);
+  const phi = num(document.getElementById('phi-val').value, 20);
+  const hFill = num(document.getElementById('hfill-val').value, 0.67);
+  const amSel = document.getElementById('analysis-model').value;
+
+  // Determine regression model to use
+  let amModel = regrResult;
+  if (amSel !== 'same' && amSel !== '') {
+    // Re-run regression with selected model
+    const batch = batches[activeBatch];
+    const rawData = getValidData(batch);
+    if (rawData.length >= 2) {
+      const averaged = averageByLevel(rawData);
+      const mode = document.querySelector('input[name="reg-mode"]:checked').value;
+      let fccData = averaged.slice();
+      if (mode === 'lp') fccData = averaged.slice(0,3);
+      const xs = fccData.map(r=>r.sigma1), ys = fccData.map(r=>r.fc);
+      let reg = null;
+      if (amSel==='linear') reg = fitLinear(xs,ys);
+      else if (amSel==='power') reg = fitPower(xs,ys);
+      else if (amSel==='log') reg = fitLog(xs,ys);
+      else if (amSel==='mehos') reg = fitMehos(xs,ys);
+      if (reg) amModel = Object.assign({model:amSel}, reg);
+    }
+  }
+
+  if (!amModel) {
+    // Try to run a default regression
+    const batch = batches[activeBatch];
+    const rawData = getValidData(batch);
+    if (rawData.length >= 2) {
+      const averaged = averageByLevel(rawData);
+      const xs = averaged.map(r=>r.sigma1), ys = averaged.map(r=>r.fc);
+      const reg = fitLinear(xs,ys);
+      if (reg) amModel = Object.assign({model:'linear'}, reg);
+    }
+  }
+
+  if (!amModel) { alert('Pas de régression disponible. Allez dans l\'onglet Régression.'); return; }
+
+  // Ensure density result
+  let dRes = densResult;
+  if (!dRes) {
+    const rhoRef = num(document.getElementById('rho-ref').value, 600);
+    dRes = {rhoB0: rhoRef, beta: 0, r2: null};
+  }
+
+  const params = {ff, SF, k, phi, hFill};
+  analysisResults = vessels.map(v => analyzeVessel(v, amModel, dRes, params));
+
+  renderResults();
+  switchTab('resultats');
+  setStatus(`Analyse complète: ${vessels.length} cuves analysées, ff=${ff}, SF=${SF}`);
+}
+
+// =====================================================================
+// RESULTS RENDERING
+// =====================================================================
+function renderResults() {
+  const container = document.getElementById('results-container');
+  if (!analysisResults.length) {
+    container.innerHTML = '<div class="panel" style="color:#667;text-align:center;padding:30px">Lancer l\'analyse (Tab Analyse/Cuves) pour voir les résultats</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+
+  // Summary table
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.style.marginBottom='14px';
+  let html = `<h2>Tableau récapitulatif</h2><div class="table-scroll"><table>
+    <thead><tr>
+      <th>Cuve</th><th>Type</th><th>σ₁_crit (Pa)</th><th>ρ_b_crit (kg/m³)</th>
+      <th>H(θ')</th><th>B_crit (cm)</th><th>B_actual (cm)</th><th>B/B_crit</th><th>Statut</th>
+      <th>σ₁_actif (Pa)</th><th>σ₁_Janssen (Pa)</th><th>Écoulement</th>
+    </tr></thead><tbody>`;
+
+  analysisResults.forEach(r => {
+    const statusBadge = r.B_status==='pass' ? `<span class="badge badge-green">✓ OK (≥SF)</span>`
+      : r.B_status==='marginal' ? `<span class="badge badge-yellow">⚠ Marginal</span>`
+      : r.B_status==='fail' ? `<span class="badge badge-red">✗ Insuffisant</span>`
+      : `<span class="badge badge-grey">—</span>`;
+
+    const flowBadge = r.flowState==='flowing' ? `<span class="badge badge-green">Écoulant</span>`
+      : r.flowState==='arching' ? `<span class="badge badge-red">Risque voûtage</span>`
+      : `<span class="badge badge-grey">—</span>`;
+
+    html += `<tr>
+      <td><strong>${r.vessel.name}</strong></td>
+      <td>${VESSEL_TYPES.find(t=>t.val===r.vessel.type)?.label||r.vessel.type}</td>
+      <td>${r.sigma1_crit!==null?fmtN(r.sigma1_crit,1):'—'}</td>
+      <td>${r.rhoB_crit!==null?fmtN(r.rhoB_crit,1):'—'}</td>
+      <td>${fmtN(r.H,3)}</td>
+      <td>${r.B_crit!==null?fmtN(r.B_crit,2):'—'}</td>
+      <td>${fmtN(r.vessel.B,1)}</td>
+      <td>${r.B_ratio!==null?fmtN(r.B_ratio,3):'—'}</td>
+      <td>${statusBadge}</td>
+      <td>${fmtN(r.sigma1_actif,1)}</td>
+      <td>${fmtN(r.sigma_janssen,1)}</td>
+      <td>${flowBadge}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+  panel.innerHTML = html;
+  container.appendChild(panel);
+
+  // Detail cards per vessel
+  analysisResults.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'panel results-vessel';
+    const typeLabel = VESSEL_TYPES.find(t=>t.val===r.vessel.type)?.label||r.vessel.type;
+
+    const flowColor = r.flowState==='flowing'?'#4ddb90':r.flowState==='arching'?'#f07070':'#8899aa';
+
+    div.innerHTML = `
+      <h3>${r.vessel.name} <span style="font-size:11px;color:#8899aa;font-weight:400">(${typeLabel}, θ'=${r.vessel.theta}°, B=${r.vessel.B} cm)</span></h3>
+      <div class="results-grid">
+        <div class="result-card">
+          <div class="label">σ₁ critique (ff=${r.ff})</div>
+          <div class="value">${r.sigma1_crit!==null?fmtN(r.sigma1_crit,1)+' Pa':'—'}</div>
+          <div class="sub">Intersection courbe de flux</div>
+        </div>
+        <div class="result-card">
+          <div class="label">ρ_b à σ₁_crit</div>
+          <div class="value">${r.rhoB_crit!==null?fmtN(r.rhoB_crit,1)+' kg/m³':'—'}</div>
+          <div class="sub">Régression densité</div>
+        </div>
+        <div class="result-card">
+          <div class="label">Facteur H(θ')</div>
+          <div class="value">${fmtN(r.H,3)}</div>
+          <div class="sub">θ'=${r.vessel.theta}°</div>
+        </div>
+        <div class="result-card">
+          <div class="label">B_crit</div>
+          <div class="value">${r.B_crit!==null?fmtN(r.B_crit,2)+' cm':'—'}</div>
+          <div class="sub">Ouverture critique minimale</div>
+        </div>
+        <div class="result-card">
+          <div class="label">B_actual / B_crit</div>
+          <div class="value" style="color:${r.B_status==='pass'?'#4ddb90':r.B_status==='marginal'?'#f0c040':'#f07070'}">${r.B_ratio!==null?fmtN(r.B_ratio,3):'—'}</div>
+          <div class="sub">SF cible = ${r.SF}</div>
+        </div>
+        <div class="result-card">
+          <div class="label">σ_v Janssen (cylindre)</div>
+          <div class="value">${fmtN(r.sigma_janssen,1)} Pa</div>
+          <div class="sub">Contrainte verticale cylindre</div>
+        </div>
+        <div class="result-card">
+          <div class="label">σ₁ actif (sortie cône)</div>
+          <div class="value">${fmtN(r.sigma1_actif,1)} Pa</div>
+          <div class="sub">Contrainte active à l'orifice</div>
+        </div>
+        <div class="result-card">
+          <div class="label">État d'écoulement</div>
+          <div class="value" style="color:${flowColor};font-size:13px">${r.flowState==='flowing'?'Écoulant':r.flowState==='arching'?'Risque voûtage':'—'}</div>
+          <div class="sub">σ₁_actif ${r.sigma1_crit!==null?(r.sigma1_actif<r.sigma1_crit?'<':'≥')+' σ₁_crit':''}</div>
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+// =====================================================================
+// EXPORT CSV
+// =====================================================================
+function exportCSV() {
+  if (!analysisResults.length) { alert('Pas de résultats à exporter.'); return; }
+
+  const headers = [
+    'Cuve','Type','θ_deg','B_actual_cm','D_m','Hcone_mm','Hrect_mm',
+    'ff_cible','SF','sigma1_crit_Pa','rhoB_crit_kgm3',
+    'H_factor','B_crit_cm','B_ratio','B_statut',
+    'sigma_Janssen_Pa','sigma1_actif_Pa','Ecoulement'
+  ];
+
+  const rows = analysisResults.map(r => [
+    r.vessel.name, r.vessel.type, r.vessel.theta, r.vessel.B, r.vessel.D, r.vessel.Hcone, r.vessel.Hrect,
+    r.ff, r.SF,
+    r.sigma1_crit!==null?fmtN(r.sigma1_crit,2):'',
+    r.rhoB_crit!==null?fmtN(r.rhoB_crit,2):'',
+    fmtN(r.H,4),
+    r.B_crit!==null?fmtN(r.B_crit,3):'',
+    r.B_ratio!==null?fmtN(r.B_ratio,4):'',
+    r.B_status,
+    fmtN(r.sigma_janssen,2),
+    fmtN(r.sigma1_actif,2),
+    r.flowState
+  ].join(','));
+
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'flowfunction_results.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  setStatus('Export CSV effectué.');
+}
+
+// =====================================================================
+// INIT
+// =====================================================================
+init();
+</script>
+</body>
+</html>
