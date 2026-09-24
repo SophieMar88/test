@@ -225,11 +225,19 @@ canvas{display:block}
   <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <h2>Base de données des cuves / trémies</h2>
-      <button onclick="addVessel()">+ Ajouter cuve</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="form-group" style="min-width:280px;margin:0">
+          <label style="margin-bottom:2px">Ajouter depuis catalogue (Nom — Site)</label>
+          <select id="vessel-catalog-select" onchange="addVesselFromCatalog(this)">
+            <option value="">— Sélectionner une cuve —</option>
+          </select>
+        </div>
+        <button onclick="addVessel()" style="margin-top:16px">+ Cuve manuelle</button>
+      </div>
     </div>
     <div class="table-scroll">
       <table id="vessel-table">
-        <thead><tr><th>Nom</th><th>Type</th><th>θ' (°)</th><th>B_sortie (cm)</th><th>D_cuve (m)</th><th>H_cone (mm)</th><th>H_rect (mm)</th><th></th></tr></thead>
+        <thead><tr><th>Nom</th><th>Site</th><th>Type</th><th>θ' (°)</th><th>B_sortie (cm)</th><th>D_cuve (m)</th><th>H_cone (mm)</th><th>H_rect (mm)</th><th></th></tr></thead>
         <tbody id="vessel-tbody"></tbody>
       </table>
     </div>
@@ -288,15 +296,72 @@ let analysisResults = [];
 
 const DEFAULT_ROWS = 10;
 
-const DEFAULT_VESSELS = [
-  {name:'Trémie conique 30°', type:'conique', theta:30, B:20, D:0.5, Hcone:300, Hrect:500},
-  {name:'Trémie conique 45°', type:'conique', theta:45, B:30, D:0.8, Hcone:400, Hrect:600},
-  {name:'Silo plan-flow',     type:'planflow', theta:20, B:25, D:0.6, Hcone:0,   Hrect:800},
-  {name:'Trémie carrée 35°',  type:'carre',   theta:35, B:22, D:0.5, Hcone:350, Hrect:550}
+const DEFAULT_VESSELS = [];
+
+// Catalogue extrait de la feuille "Vessel Database" du fichier Excel de référence
+const VESSEL_CATALOG = [
+  {"name":"Dev 1L","site":"Montpellier Dev","vol":1.0,"B":6.436,"type":"conique","theta":41.0,"Hcone":60.6,"Hrect":0.0,"D":0.1325},
+  {"name":"Dev 1,5L","site":"Montpellier Dev","vol":1.5,"B":6.35,"type":"conique","theta":41.0,"Hcone":51.52,"Hrect":110.4,"D":0.1325},
+  {"name":"Dev 5L","site":"Montpellier Dev","vol":5.0,"B":6.35,"type":"conique","theta":45.0,"Hcone":111.43,"Hrect":130.0,"D":0.234},
+  {"name":"Dev 3L","site":"Montpellier Dev","vol":3.0,"B":6.31,"type":"conique","theta":41.0,"Hcone":111.38,"Hrect":74.25,"D":0.2302},
+  {"name":"Dev 8L","site":"Montpellier Dev","vol":8.0,"B":6.27,"type":"conique","theta":43.5,"Hcone":125.42,"Hrect":151.24,"D":0.2656},
+  {"name":"Dev 12L","site":"Montpellier Dev","vol":12.0,"B":6.35,"type":"conique","theta":42.0,"Hcone":137.72,"Hrect":156.3,"D":0.268},
+  {"name":"Dev 20L","site":"Montpellier Dev","vol":20.0,"B":10.4,"type":"conique","theta":38.0,"Hcone":158.5,"Hrect":182.3,"D":0.317},
+  {"name":"Dev 35L","site":"Montpellier Dev","vol":35.0,"B":10.4,"type":"conique","theta":33.0,"Hcone":172.36,"Hrect":213.2,"D":0.381},
+  {"name":"ULC 50L","site":"Montpellier ULC","vol":50.0,"B":10.2,"type":"conique","theta":42.0,"Hcone":224.6,"Hrect":193.9,"D":0.49},
+  {"name":"MON 100L","site":"Montpellier ULC","vol":100.0,"B":20.0,"type":"conique","theta":40.0,"Hcone":216.0,"Hrect":242.85,"D":0.6},
+  {"name":"MON 150L","site":"Montpellier ULC","vol":150.0,"B":24.0,"type":"conique","theta":42.0,"Hcone":200.0,"Hrect":400.0,"D":0.6},
+  {"name":"ULC 300L","site":"Montpellier ULC","vol":300.0,"B":24.72,"type":"conique","theta":35.0,"Hcone":432.6,"Hrect":169.9,"D":0.842},
+  {"name":"MON 500L","site":"Montpellier ULC","vol":500.0,"B":20.0,"type":"conique","theta":40.0,"Hcone":447.0,"Hrect":423.9,"D":0.975},
+  {"name":"ULC 650L","site":"Montpellier ULC","vol":650.0,"B":22.75,"type":"conique","theta":35.0,"Hcone":439.96,"Hrect":606.1,"D":0.842},
+  {"name":"AMB 600L","site":"Ambarès CMA","vol":600.0,"B":25.0,"type":"conique","theta":28.0,"Hcone":1106.7,"Hrect":0.0,"D":1.319},
+  {"name":"AMB GRAN 600","site":"Ambarès Granulation","vol":600.0,"B":25.1,"type":"conique","theta":36.0,"Hcone":856.8,"Hrect":0.0,"D":1.327},
+  {"name":"AMB 1500L","site":"Ambarès CMA","vol":1500.0,"B":25.1,"type":"conique","theta":31.0,"Hcone":897.9,"Hrect":626.46,"D":1.326},
+  {"name":"AMB A3 1500L","site":"Ambarès A3","vol":1500.0,"B":25.2,"type":"conique","theta":33.0,"Hcone":845.1,"Hrect":652.4,"D":1.334},
+  {"name":"AMB 1720L","site":"Ambarès CMA","vol":1720.0,"B":25.1,"type":"conique","theta":38.0,"Hcone":709.98,"Hrect":835.3,"D":1.326},
+  {"name":"AMB BSI 1720L","site":"Ambarès BSI","vol":1720.0,"B":25.1,"type":"conique","theta":40.0,"Hcone":649.52,"Hrect":942.85,"D":1.32},
+  {"name":"Flodex Standard 36","site":"Montpellier Dev","vol":0.18,"B":3.6,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 34","site":"Montpellier Dev","vol":0.18,"B":3.4,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 32","site":"Montpellier Dev","vol":0.18,"B":3.2,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 30","site":"Montpellier Dev","vol":0.18,"B":3.0,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 28","site":"Montpellier Dev","vol":0.18,"B":2.8,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 26","site":"Montpellier Dev","vol":0.18,"B":2.6,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 24","site":"Montpellier Dev","vol":0.18,"B":2.4,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 22","site":"Montpellier Dev","vol":0.18,"B":2.2,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 20","site":"Montpellier Dev","vol":0.18,"B":2.0,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 18","site":"Montpellier Dev","vol":0.18,"B":1.8,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 16","site":"Montpellier Dev","vol":0.18,"B":1.6,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 14","site":"Montpellier Dev","vol":0.18,"B":1.4,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 12","site":"Montpellier Dev","vol":0.18,"B":1.2,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 10","site":"Montpellier Dev","vol":0.18,"B":1.0,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 8","site":"Montpellier Dev","vol":0.18,"B":0.8,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 6","site":"Montpellier Dev","vol":0.18,"B":0.6,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"Flodex Standard 4","site":"Montpellier Dev","vol":0.18,"B":0.4,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":53.0,"D":0.057},
+  {"name":"GranuFlow 30","site":"Montpellier Dev","vol":0.58,"B":3.0,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":152.0,"D":0.049},
+  {"name":"GranuFlow 28","site":"Montpellier Dev","vol":0.58,"B":2.8,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":152.0,"D":0.049},
+  {"name":"GranuFlow 26","site":"Montpellier Dev","vol":0.58,"B":2.6,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":152.0,"D":0.049},
+  {"name":"GranuFlow 24","site":"Montpellier Dev","vol":0.58,"B":2.4,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":152.0,"D":0.049},
+  {"name":"GranuFlow 22","site":"Montpellier Dev","vol":0.58,"B":2.2,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":152.0,"D":0.049},
+  {"name":"GranuFlow 20","site":"Montpellier Dev","vol":0.58,"B":2.0,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":152.0,"D":0.049},
+  {"name":"GranuFlow 18","site":"Montpellier Dev","vol":0.58,"B":1.8,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":152.0,"D":0.049},
+  {"name":"GranuFlow 12","site":"Montpellier Dev","vol":0.58,"B":1.2,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":152.0,"D":0.049},
+  {"name":"GranuFlow 8","site":"Montpellier Dev","vol":0.58,"B":0.8,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":152.0,"D":0.049},
+  {"name":"GranuFlow 4","site":"Montpellier Dev","vol":0.58,"B":0.4,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":152.0,"D":0.049},
+  {"name":"GranuFlow 2","site":"Montpellier Dev","vol":0.58,"B":0.2,"type":"conique","theta":0.0,"Hcone":0.0,"Hrect":152.0,"D":0.049},
+  {"name":"Entonnoir Pharmacopée","site":"Montpellier Dev","vol":0.65,"B":1.0,"type":"conique","theta":30.0,"Hcone":100.0,"Hrect":0.0,"D":0.125},
+  {"name":"Trémie WP120","site":"Montpellier Dev","vol":5.39,"B":9.5,"type":"carre","theta":14.2,"Hcone":243.0,"Hrect":0.0,"D":0.182},
+  {"name":"Trémie Microdose Flexalab","site":"Montpellier Dev","vol":0.14,"B":3.0,"type":"conique","theta":13.0,"Hcone":52.0,"Hrect":28.0,"D":0.055},
+  {"name":"Trémie Styl'one","site":"Montpellier Dev","vol":0.5,"B":3.0,"type":"planflow","theta":39.7,"Hcone":135.0,"Hrect":0.0,"D":0.112},
+  {"name":"Trémie WP200","site":"Ambarès","vol":222.0,"B":33.8,"type":"planflow","theta":20.0,"Hcone":522.0,"Hrect":176.0,"D":0.652},
+  {"name":"Trémie WP120 ULC","site":"Montpellier Dev","vol":3.4,"B":4.5,"type":"planflow","theta":8.3,"Hcone":285.0,"Hrect":0.0,"D":0.1473},
+  {"name":"Trémie Fette 102i","site":"Montpellier Dev","vol":9.2,"B":10.5,"type":"conique","theta":14.0,"Hcone":207.0,"Hrect":155.0,"D":0.205},
+  {"name":"Trémie Korsch XL100","site":"Montpellier Dev","vol":4.2,"B":6.1,"type":"conique","theta":32.0,"Hcone":171.0,"Hrect":0.0,"D":0.27},
+  {"name":"Trémie PZ","site":"Montpellier Dev","vol":1.8,"B":7.1,"type":"conique","theta":30.0,"Hcone":113.0,"Hrect":0.0,"D":0.2}
 ];
 
 function init() {
   vessels = DEFAULT_VESSELS.map(v => Object.assign({},v));
+  populateCatalogDropdown();
   // Seed some example data for batch 1
   batches[0].data = [
     {sigma1:300,  fc:120, rhoB:580, Hausner:1.15},
@@ -1020,11 +1085,12 @@ function renderVesselTable() {
     const tr = document.createElement('tr');
     const typeOpts = VESSEL_TYPES.map(t=>`<option value="${t.val}" ${v.type===t.val?'selected':''}>${t.label}</option>`).join('');
     tr.innerHTML = `
-      <td><input type="text" value="${v.name}" onchange="vessels[${i}].name=this.value" style="width:140px"></td>
+      <td><input type="text" value="${escHtml(v.name)}" onchange="vessels[${i}].name=this.value" style="width:130px"></td>
+      <td><input type="text" value="${escHtml(v.site||'')}" onchange="vessels[${i}].site=this.value" style="width:120px;color:#8899aa"></td>
       <td><select onchange="vessels[${i}].type=this.value" style="width:145px">${typeOpts}</select></td>
       <td><input type="number" value="${v.theta}" min="0" max="89" onchange="vessels[${i}].theta=parseFloat(this.value)||0" style="width:55px"></td>
       <td><input type="number" value="${v.B}" min="0" onchange="vessels[${i}].B=parseFloat(this.value)||0" style="width:65px"></td>
-      <td><input type="number" value="${v.D}" min="0" step="0.05" onchange="vessels[${i}].D=parseFloat(this.value)||0" style="width:65px"></td>
+      <td><input type="number" value="${v.D}" min="0" step="0.001" onchange="vessels[${i}].D=parseFloat(this.value)||0" style="width:65px"></td>
       <td><input type="number" value="${v.Hcone}" min="0" onchange="vessels[${i}].Hcone=parseFloat(this.value)||0" style="width:70px"></td>
       <td><input type="number" value="${v.Hrect}" min="0" onchange="vessels[${i}].Hrect=parseFloat(this.value)||0" style="width:70px"></td>
       <td><button class="danger" onclick="removeVessel(${i})">×</button></td>
@@ -1033,8 +1099,44 @@ function renderVesselTable() {
   });
 }
 
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function populateCatalogDropdown() {
+  const sel = document.getElementById('vessel-catalog-select');
+  if (!sel) return;
+  // Group by site
+  const sites = {};
+  VESSEL_CATALOG.forEach((v,i) => {
+    const s = v.site || 'Autre';
+    if (!sites[s]) sites[s] = [];
+    sites[s].push({v, i});
+  });
+  let html = '<option value="">— Sélectionner une cuve —</option>';
+  Object.keys(sites).sort().forEach(site => {
+    html += `<optgroup label="${escHtml(site)}">`;
+    sites[site].forEach(({v, i}) => {
+      const label = v.vol ? `${escHtml(v.name)} (${v.vol}L)` : escHtml(v.name);
+      html += `<option value="${i}">${label}</option>`;
+    });
+    html += '</optgroup>';
+  });
+  sel.innerHTML = html;
+}
+
+function addVesselFromCatalog(sel) {
+  const idx = parseInt(sel.value);
+  if (isNaN(idx)) return;
+  const c = VESSEL_CATALOG[idx];
+  vessels.push(Object.assign({}, c));
+  renderVesselTable();
+  sel.value = '';
+  setStatus(`Cuve "${c.name}" (${c.site}) ajoutée.`);
+}
+
 function addVessel() {
-  vessels.push({name:'Nouvelle cuve', type:'conique', theta:30, B:20, D:0.5, Hcone:300, Hrect:500});
+  vessels.push({name:'Nouvelle cuve', site:'', type:'conique', theta:30, B:20, D:0.5, Hcone:300, Hrect:500});
   renderVesselTable();
 }
 
