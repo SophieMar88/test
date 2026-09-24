@@ -877,8 +877,8 @@ const DENSITY_COLOR = '#f0a040';
 
 function drawAxes(ctx, cx, margin, xMin, xMax, yMin, yMax, xLabel, yLabel) {
   const {left:ml,right:mr,top:mt,bottom:mb} = margin;
-  const W = cx.canvas.width - ml - mr;
-  const H = cx.canvas.height - mt - mb;
+  const W = cx.width - ml - mr;
+  const H = cx.height - mt - mb;
 
   // Background
   ctx.fillStyle = CHART_BG;
